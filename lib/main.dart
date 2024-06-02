@@ -7,24 +7,31 @@ import 'dart:convert'; // For jsonDecode
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'dart:io';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-
-void main() async{
-  WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
+Future<ThemeData> getThemeFromFile() async {
   final themeStr = await rootBundle.loadString('assets/purple_dark.json');
   final themeJson = jsonDecode(themeStr);
   final theme = ThemeDecoder.decodeThemeData(themeJson)!;
+  return theme;
+}
+
+void main() async{
+  sqfliteFfiInit();
+  WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
+
   Window.initialize();
   if (Platform.isWindows) {
     // await Window.hideWindowControls();
   }
+  ThemeData theme = await getThemeFromFile();
   runApp(MyApp(theme: theme));
   if (Platform.isWindows) {
     doWhenWindowReady(() {
       appWindow
-        ..minSize = const Size(640, 360)
-        ..size = const Size(720, 540)
+        ..minSize = const Size(1333, 768)
+        ..size = const Size(1333, 768)
         ..alignment = Alignment.center
         ..show();
     });
@@ -54,14 +61,13 @@ class MyApp extends StatelessWidget {
             useMaterial3: true
           ),
           darkTheme: ThemeData(
-              colorSchemeSeed: const Color(0x00006c7b),
-              brightness: Brightness.dark,
-              useMaterial3: true
+            colorSchemeSeed: const Color(0x00006c7b),
+            brightness: Brightness.dark,
+            useMaterial3: true
           ),
-          home: const Scaffold(
-            backgroundColor: Colors.transparent,
-            body: HomePage(),
-          ),
+          home: const HomePage(),
+          debugShowCheckedModeBanner: false,
+          debugShowMaterialGrid: false,
         )
     );
   }
