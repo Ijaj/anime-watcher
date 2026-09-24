@@ -130,7 +130,9 @@ void main() {
     await pumpApp(tester, Scaffold(body: AddItemDialog(repository: repo, malClient: MalClient())));
 
     expect(find.text('Add to Library'), findsOneWidget);
-    final addButton = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Add Without Metadata'));
+    // FilledButton.icon is a private subclass on older Flutter versions, so match by `is`, not by exact type.
+    final addButton = tester.widget<FilledButton>(find.ancestor(
+        of: find.text('Add Without Metadata'), matching: find.byWidgetPredicate((w) => w is FilledButton)));
     expect(addButton.onPressed, isNull, reason: 'nothing selected yet');
     expect(tester.takeException(), isNull);
   });
