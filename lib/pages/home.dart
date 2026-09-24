@@ -1,13 +1,25 @@
 import 'dart:io';
 import 'dart:ui';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:anime_watcher/components/file_upload.dart';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 
+import '../components/add_item_dialog.dart';
+import '../components/episode_list.dart';
+import '../components/item_header.dart';
+import '../components/library_sidebar.dart';
+import '../data/library_repository.dart';
+import '../models/episode.dart';
+import '../models/item.dart';
+import '../services/library_scanner.dart';
+import '../services/mal_client.dart';
+import 'player_page.dart';
+
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final LibraryRepository repository;
+  final MalClient malClient;
+
+  const HomePage({super.key, required this.repository, required this.malClient});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -19,129 +31,162 @@ enum InterfaceBrightness {
   auto,
 }
 
-extension InterfaceBrightnessExtension on InterfaceBrightness {
-  bool getIsDark(BuildContext? context) {
-    if (this == InterfaceBrightness.light) return false;
-    if (this == InterfaceBrightness.auto) {
-      if (context == null) return true;
-
-      return MediaQuery.of(context).platformBrightness == Brightness.dark;
-    }
-
-    return true;
-  }
-
-  Color getForegroundColor(BuildContext? context) {
-    return getIsDark(context) ? Colors.white : Colors.black;
-  }
-}
-
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+class _HomePageState extends State<HomePage> {
   static const double titleHeight = 150;
+  static const double headerHeight = 244;
   static const double padding = 8.0;
   static const double tileOpacity = 0.6;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  String _uploadedFile = '';
 
-  BoxDecoration containerDecoration(BuildContext context){
+  List<LibraryEntry> _entries = [];
+  List<Episode> _episodes = [];
+  int? _selectedId;
+  bool _loaded = false;
+
+  LibraryRepository get _repo => widget.repository;
+
+  LibraryEntry? get _selected {
+    for (final e in _entries) {
+      if (e.item.id == _selectedId) return e;
+    }
+    return null;
+  }
+
+  BoxDecoration containerDecoration(BuildContext context) {
     return BoxDecoration(
-      color: Theme.of(context).scaffoldBackgroundColor.withOpacity(tileOpacity),
+      color: Theme.of(context).scaffoldBackgroundColor.withAlpha((255 * tileOpacity).round()),
       borderRadius: BorderRadius.circular(12.0),
     );
   }
 
   WindowEffect effect = Platform.isWindows ? WindowEffect.acrylic : WindowEffect.transparent;
-  Color color = Platform.isWindows ? const Color(0x01000000) : Colors.transparent;  // 0xCC222222 #
-  InterfaceBrightness brightness =
-  Platform.isMacOS ? InterfaceBrightness.auto : InterfaceBrightness.dark;
+  Color color = Platform.isWindows ? const Color(0x01000000) : Colors.transparent;
+  InterfaceBrightness brightness = Platform.isMacOS ? InterfaceBrightness.auto : InterfaceBrightness.dark;
 
-  void setWindowEffect(WindowEffect? value) {
+  void setWindowEffect(WindowEffect value) {
     Window.setEffect(
-      effect: value!,
+      effect: value,
       color: color,
       dark: brightness == InterfaceBrightness.dark,
     );
-    if (Platform.isMacOS) {
-      if (brightness != InterfaceBrightness.auto) {
-        Window.overrideMacOSBrightness(
-          dark: brightness == InterfaceBrightness.dark,
-        );
-      }
+    if (Platform.isMacOS && brightness != InterfaceBrightness.auto) {
+      Window.overrideMacOSBrightness(dark: brightness == InterfaceBrightness.dark);
     }
     setState(() => effect = value);
-  }
-
-  void setBrightness(InterfaceBrightness brightness) {
-    this.brightness = brightness;
-    if (this.brightness == InterfaceBrightness.dark) {
-      color = Platform.isWindows ? const Color(0xCC222222) : Colors.transparent;
-    } else {
-      color = Platform.isWindows ? const Color(0x22DDDDDD) : Colors.transparent;
-    }
-    setWindowEffect(effect);
-  }
-
-  void _openDrawer() {
-    _scaffoldKey.currentState?.openDrawer();
-  }
-
-  Future<void> showFileUploadDialog(BuildContext context) async {
-    final result = await showDialog<File>(
-      context: context,
-      builder: (ctx) => FileUploadDialog(
-        context: context,
-        onFileSelected: (file) {
-          setState(() {
-            _uploadedFile = file;
-          });
-        }
-      ),
-    );
-
-    if (result != null) {
-      // Handle the selected file
-      if (kDebugMode) {
-        print('Selected file: ${result.path}');
-      }
-    }
   }
 
   @override
   void initState() {
     super.initState();
     setWindowEffect(effect);
-    _controller = AnimationController(vsync: this);
+    _repo.addListener(_reload);
+    _reload();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _repo.removeListener(_reload);
     super.dispose();
+  }
+
+  Future<void> _reload() async {
+    final entries = await _repo.entries();
+    var selectedId = _selectedId;
+    if (!entries.any((e) => e.item.id == selectedId)) {
+      selectedId = entries.isEmpty ? null : entries.first.item.id;
+    }
+    final episodes = selectedId == null ? <Episode>[] : await _repo.episodes(selectedId);
+    if (!mounted) return;
+    setState(() {
+      _entries = entries;
+      _selectedId = selectedId;
+      _episodes = episodes;
+      _loaded = true;
+    });
+  }
+
+  Future<void> _select(LibraryEntry entry) async {
+    setState(() => _selectedId = entry.item.id);
+    await _reload();
+  }
+
+  Future<void> _addItem() async {
+    final item = await AddItemDialog.show(context, _repo, widget.malClient);
+    if (item == null || !mounted) return;
+    setState(() => _selectedId = item.id);
+    await _reload();
+    _toast('Added ${item.title}');
+  }
+
+  Future<void> _play(Episode episode) async {
+    final entry = _selected;
+    if (entry == null) return;
+    if (!await File(episode.path).exists()) {
+      _toast('File not found: ${episode.path}\nTry “Rescan folder”.', error: true);
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => PlayerPage(
+        repository: _repo,
+        item: entry.item,
+        playlist: _episodes,
+        startIndex: _episodes.indexOf(episode),
+      ),
+    ));
+    // Positions are saved without notifying, so refresh on return.
+    await _reload();
+  }
+
+  Future<void> _onAction(ItemAction action) async {
+    final item = _selected?.item;
+    if (item == null) return;
+    switch (action) {
+      case ItemAction.rescan:
+        try {
+          final scanned = await LibraryScanner.scan(item.rootPath);
+          final (added, removed) = await _repo.syncEpisodes(item.id!, scanned);
+          _toast('Rescan complete: $added added, $removed removed');
+        } on FileSystemException catch (e) {
+          _toast('Could not scan ${item.rootPath}: ${e.message}', error: true);
+        }
+      case ItemAction.remove:
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Remove ${item.title}?'),
+            content: const Text('This removes it and its watch history from the library. '
+                'Files on disk are not touched.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
+            ],
+          ),
+        );
+        if (confirmed == true) await _repo.removeItem(item.id!);
+    }
+  }
+
+  void _toast(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: error ? Theme.of(context).colorScheme.error : null,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    BoxDecoration decoration = containerDecoration(context);
+    final decoration = containerDecoration(context);
+    final selected = _selected;
+    final nextUp = LibraryRepository.nextUp(_episodes);
+
     return Scaffold(
-      key: _scaffoldKey,
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
         hoverElevation: 6,
-        tooltip: "Add To Watchlist",
-        onPressed: (){
-          // _openDrawer();
-          showFileUploadDialog(context);
-        },
+        tooltip: 'Add To Library',
+        onPressed: _addItem,
         child: const Icon(Icons.add),
-      ),
-      drawer: Drawer(
-        child: Column(
-          children: [
-            ElevatedButton(onPressed: (){}, child: const Text('Settings')),
-            ElevatedButton(onPressed: (){}, child: const Text('Exit')),
-          ],
-        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -151,14 +196,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 100.0, sigmaY: 100.0, tileMode: TileMode.mirror),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            mainAxisSize: MainAxisSize.max,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(
                 width: 400,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(padding, padding, padding, 0),
@@ -173,94 +215,59 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         ),
                       ),
                     ),
-                    ConstrainedBox(
-                      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return Padding(
-                            padding: const EdgeInsets.all(padding),
-                            child: Container(
-                              // color: Theme.of(context).scaffoldBackgroundColor.withOpacity(.8),
-                              height: constraints.maxHeight - titleHeight - (padding * 3), // Subtract the height of the title container
-                              decoration: decoration,
-                              child: ClipRRect(
-                                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                                child: SingleChildScrollView(
-                                  child: Column(
-                                    children: [
-                                      ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-                                          .map(
-                                            (e) => Padding(
-                                          padding: const EdgeInsets.all(padding),
-                                          child: Container(
-                                            height: 76.0,
-                                            width: double.infinity,
-                                            decoration: BoxDecoration(
-                                              color: e % 2 == 0
-                                                  ? Colors.deepPurpleAccent
-                                                  : Colors.white12,
-                                              borderRadius: BorderRadius.circular(12.0),
-                                            ),
-                                            child: InkWell(
-                                              splashColor: Theme.of(context).primaryColor,
-                                              highlightColor: Theme.of(context).highlightColor,
-                                              radius: 20,
-                                              onTap: (){
-                                                if (kDebugMode) {
-                                                  print('tapped/clicked $e');
-                                                }
-                                              },
-                                              child: Row(
-                                                children: [
-                                                  const SizedBox(width: 10),
-                                                  const Icon(Icons.person, size: 32,),
-                                                  const SizedBox(width: 10),
-                                                  Text(
-                                                    "Anime $e",
-                                                    style: TextStyle(color: e % 2 == 0 ? Colors.black : Colors.white, fontSize: 22, decoration: TextDecoration.none),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(padding),
+                        child: Container(
+                          decoration: decoration,
+                          clipBehavior: Clip.antiAlias,
+                          child: _loaded
+                              ? LibrarySidebar(entries: _entries, selectedId: _selectedId, onSelected: _select)
+                              : const Center(child: CircularProgressIndicator()),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               Expanded(
-                child: SizedBox(
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(0, padding, padding, 0),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, padding, padding, 0),
+                      child: Container(
+                        width: double.infinity,
+                        height: headerHeight,
+                        decoration: decoration,
+                        child: selected == null
+                            ? const Center(child: Text('Select a show, or click + to add one.'))
+                            : ItemHeader(
+                                entry: selected,
+                                nextUp: nextUp,
+                                onPlay: nextUp == null ? null : () => _play(nextUp),
+                                onAction: _onAction,
+                              ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(0, padding, padding, padding),
                         child: Container(
                           width: double.infinity,
-                          height: titleHeight,
                           decoration: decoration,
-                          child: const Center(child: Text('__ANIME HEADER__')),
+                          clipBehavior: Clip.antiAlias,
+                          child: selected == null
+                              ? const SizedBox.shrink()
+                              : EpisodeList(
+                                  episodes: _episodes,
+                                  highlightId: nextUp?.id,
+                                  onPlay: _play,
+                                  onSetWatched: (e, watched) => _repo.setWatched(e.id!, watched),
+                                ),
                         ),
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(0, padding, padding, padding),
-                          child: Container(
-                            decoration: decoration,
-                            child: const Center(child: Text('__MAIN CONTENT__')),
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
