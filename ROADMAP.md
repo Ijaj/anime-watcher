@@ -6,10 +6,12 @@ a built-in player, and remembers exactly where you left off.
 
 Status legend: ✅ done · 🚧 in progress · ⬜ not started
 
-> Phases 1–5 are implemented and covered by unit/widget tests
-> (`flutter test`), but have **not yet been tried in a running desktop build**
-> — video playback and the native folder picker need a manual check on
-> Windows/Linux.
+> Phases 1–6 are implemented and covered by unit/widget tests
+> (`flutter test`, run in CI), but have **not yet been tried in a running
+> desktop build**. Still needing a manual check on Windows/Linux: video
+> playback and the player shortcuts (media_kit), the native folder pickers
+> (single and bulk import), the acrylic window, real MyAnimeList requests
+> and cover downloads, and the startup rescan against real drives.
 
 ---
 
@@ -67,7 +69,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 - ✅ Auto-advance to the next episode; back button returns to library.
 - ✅ Manual "mark watched / unwatched" on episodes.
 
-## Phase 6 — Quality of life ⬜
+## Phase 6 — Quality of life 🚧
 
 - ✅ "Continue watching" shelf on the home screen across all shows: shown
   when no show is selected (the new Home button in the title block), most
@@ -107,6 +109,11 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 - ✅ Remove unused dependencies (`play_video`, `json_theme`, `toastification`,
   `fullscreen_window`, `filesystem_picker`).
 - ⬜ Clear remaining lints, add widget tests.
+- ⬜ Toolchain floor: `pubspec.yaml` allows Dart ≥ 3.2.2 (Flutter 3.16), but
+  `sqflite_common_ffi ^2.3.3` needs Dart ≥ 3.3 (Flutter ≥ 3.19), so
+  `pub get` fails on 3.16. The code itself analyzes and passes all tests on
+  3.16.9 when that constraint is loosened to `>=2.3.0 <2.3.3`; decide
+  whether to lower the constraint or raise the SDK floor.
 - ✅ CI (format + analyze + test) via GitHub Actions on ubuntu-latest.
 - ⬜ Windows installer (MSIX) and Linux bundle; app icon.
 
