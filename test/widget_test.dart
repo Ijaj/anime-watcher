@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:anime_watcher/components/add_item_dialog.dart';
+import 'package:anime_watcher/components/bulk_import_dialog.dart';
 import 'package:anime_watcher/components/library_sidebar.dart';
 import 'package:anime_watcher/data/app_database.dart';
 import 'package:anime_watcher/data/library_repository.dart';
@@ -9,7 +12,10 @@ import 'package:anime_watcher/services/mal_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'fakes.dart';
 
 void main() {
   late LibraryRepository repo;
@@ -22,10 +28,17 @@ void main() {
   });
 
   /// The database runs on a real isolate, so let it answer outside fake time.
-  Future<void> settle(WidgetTester tester) async {
-    for (var i = 0; i < 5; i++) {
+  Future<void> settle(WidgetTester tester, {int rounds = 5}) async {
+    for (var i = 0; i < rounds; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
       await tester.pump();
+    }
+  }
+
+  /// Like [settle], but keeps going (up to ~5 s) until [finder] matches.
+  Future<void> settleUntil(WidgetTester tester, Finder finder) async {
+    for (var i = 0; i < 100 && finder.evaluate().isEmpty; i++) {
+      await settle(tester, rounds: 1);
     }
   }
 
@@ -119,5 +132,39 @@ void main() {
     final addButton = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Add Without Metadata'));
     expect(addButton.onPressed, isNull, reason: 'nothing selected yet');
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('bulk import reviews sub-folders and adds the chosen ones', (tester) async {
+    late Directory tmp;
+    await tester.runAsync(() async {
+      repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath));
+      tmp = await Directory.systemTemp.createTemp('bulk_widget');
+      for (final f in ['Frieren/01.mkv', 'Mob Psycho 100/01.mkv', 'Empty/notes.txt']) {
+        await File(p.join(tmp.path, f)).create(recursive: true);
+      }
+    });
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final mal = FakeMalClient({
+      'frieren': const [MalSearchResult(id: 1, title: 'Sousou no Frieren')],
+    });
+    await pumpApp(tester, Scaffold(body: BulkImportDialog(repository: repo, malClient: mal)));
+
+    await tester.enterText(find.byType(TextField), tmp.path);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settleUntil(tester, find.text('Add 2 Shows'));
+
+    expect(find.text('3 new folders'), findsOneWidget);
+    expect(find.text('Sousou no Frieren'), findsOneWidget);
+    expect(find.text('No metadata — add as "Mob Psycho 100"'), findsOneWidget);
+    expect(find.textContaining('No video files'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Add 2 Shows'));
+    List<String>? titles;
+    for (var i = 0; i < 100 && (titles?.length ?? 0) < 2; i++) {
+      await settle(tester, rounds: 1);
+      titles = await tester.runAsync(() async => [for (final e in await repo.entries()) e.item.title]);
+    }
+    expect(titles, ['Mob Psycho 100', 'Sousou no Frieren']);
   });
 }

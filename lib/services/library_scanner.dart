@@ -64,7 +64,7 @@ class LibraryScanner {
 
     final result = <ScannedEpisode>[];
     for (final season in bySeason.keys.toList()..sort()) {
-      final entries = bySeason[season]!..sort((a, b) => _naturalCompare(p.basename(a.$1), p.basename(b.$1)));
+      final entries = bySeason[season]!..sort((a, b) => naturalCompare(p.basename(a.$1), p.basename(b.$1)));
       final used = <int>{};
       final unnumbered = <String>[];
       for (final (path, number) in entries) {
@@ -96,7 +96,7 @@ class LibraryScanner {
   }
 
   /// Compares strings so that "Ep 2" sorts before "Ep 10".
-  static int _naturalCompare(String a, String b) {
+  static int naturalCompare(String a, String b) {
     final chunk = RegExp(r'\d+|\D+');
     final ca = chunk.allMatches(a.toLowerCase()).map((m) => m.group(0)!).toList();
     final cb = chunk.allMatches(b.toLowerCase()).map((m) => m.group(0)!).toList();

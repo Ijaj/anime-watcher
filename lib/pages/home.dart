@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 
 import '../components/add_item_dialog.dart';
+import '../components/bulk_import_dialog.dart';
 import '../components/continue_watching_shelf.dart';
 import '../components/episode_list.dart';
 import '../components/item_header.dart';
@@ -134,6 +135,13 @@ class _HomePageState extends State<HomePage> {
     _toast('Added ${item.title}');
   }
 
+  Future<void> _bulkImport() async {
+    final result = await BulkImportDialog.show(context, _repo, widget.malClient);
+    if (result == null || !mounted) return;
+    final failed = result.failures.isEmpty ? '' : '\nNot added:\n${result.failures.join('\n')}';
+    _toast('Added ${result.added} ${result.added == 1 ? 'show' : 'shows'}$failed', error: result.failures.isNotEmpty);
+  }
+
   Future<void> _play(Episode episode) async {
     final entry = _selected;
     if (entry != null) await _playFrom(entry.item, _episodes, episode);
@@ -251,6 +259,11 @@ class _HomePageState extends State<HomePage> {
                                 onPressed: () => _select(null),
                                 icon: const Icon(Icons.home_outlined),
                                 selectedIcon: const Icon(Icons.home),
+                              ),
+                              IconButton(
+                                tooltip: 'Import a folder of shows',
+                                onPressed: _bulkImport,
+                                icon: const Icon(Icons.drive_folder_upload_outlined),
                               ),
                             ]),
                           ),
