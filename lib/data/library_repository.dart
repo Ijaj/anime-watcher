@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../config.dart';
+import '../models/continue_watching.dart';
 import '../models/episode.dart';
 import '../models/item.dart';
 
@@ -111,13 +112,37 @@ class LibraryRepository extends ChangeNotifier {
 
   // ------------------------------------------------------------- episodes
 
-  Future<List<Episode>> episodes(int itemId) async {
-    final rows = await _db.rawQuery('''
+  static const _episodeSelect = '''
       SELECT e.*, w.position_ms, w.duration_ms, w.completed, w.updated_at
-      FROM episodes e LEFT JOIN watch_progress w ON w.episode_id = e.id
-      WHERE e.item_id = ?
-      ORDER BY e.season = 0, e.season, e.number, e.path''', [itemId]);
+      FROM episodes e LEFT JOIN watch_progress w ON w.episode_id = e.id''';
+
+  /// Seasons in order with specials last, then episode number.
+  static const _episodeOrder = 'e.season = 0, e.season, e.number, e.path';
+
+  Future<List<Episode>> episodes(int itemId) async {
+    final rows = await _db.rawQuery('$_episodeSelect WHERE e.item_id = ? ORDER BY $_episodeOrder', [itemId]);
     return rows.map(Episode.fromMap).toList();
+  }
+
+  /// The next-up episode ([nextUp]) of every show with watch history, most
+  /// recently watched show first. Fully watched shows are left out.
+  Future<List<ContinueWatching>> continueWatching() async {
+    final started = (await entries()).where((e) => e.lastWatchedAt != null).toList()
+      ..sort((a, b) => b.lastWatchedAt!.compareTo(a.lastWatchedAt!));
+    if (started.isEmpty) return const [];
+    final ids = [for (final e in started) e.item.id!];
+    final rows = await _db.rawQuery(
+        '$_episodeSelect WHERE e.item_id IN (${List.filled(ids.length, '?').join(',')}) ORDER BY e.item_id, $_episodeOrder',
+        ids);
+    final byItem = <int, List<Episode>>{};
+    for (final r in rows) {
+      final episode = Episode.fromMap(r);
+      byItem.putIfAbsent(episode.itemId, () => []).add(episode);
+    }
+    return [
+      for (final entry in started)
+        if (nextUp(byItem[entry.item.id] ?? const []) case final next?) ContinueWatching(entry: entry, episode: next),
+    ];
   }
 
   /// Syncs the stored episodes of [itemId] with a fresh scan: new files are

@@ -1,4 +1,5 @@
 import 'package:anime_watcher/components/add_item_dialog.dart';
+import 'package:anime_watcher/components/library_sidebar.dart';
 import 'package:anime_watcher/data/app_database.dart';
 import 'package:anime_watcher/data/library_repository.dart';
 import 'package:anime_watcher/models/episode.dart';
@@ -20,16 +21,20 @@ void main() {
         .setMockMethodCallHandler(const MethodChannel('com.alexmercerind/flutter_acrylic'), (_) async => null);
   });
 
+  /// The database runs on a real isolate, so let it answer outside fake time.
+  Future<void> settle(WidgetTester tester) async {
+    for (var i = 0; i < 5; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+    }
+  }
+
   Future<void> pumpApp(WidgetTester tester, Widget home) async {
     tester.view.physicalSize = const Size(1333, 768);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(theme: ThemeData(brightness: Brightness.dark, useMaterial3: true), home: home));
-    // The database runs on a real isolate, so let it answer outside fake time.
-    for (var i = 0; i < 5; i++) {
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
-      await tester.pump();
-    }
+    await settle(tester);
   }
 
   testWidgets('empty library shows the empty state', (tester) async {
@@ -37,10 +42,11 @@ void main() {
     await pumpApp(tester, HomePage(repository: repo, malClient: MalClient()));
 
     expect(find.textContaining('Your library is empty'), findsOneWidget);
+    expect(find.text('Click + to add a show folder.'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('library item shows header, seasons and next-up episode', (tester) async {
+  testWidgets('library item shows the continue shelf, then header, seasons and next-up episode', (tester) async {
     await tester.runAsync(() async {
       repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath));
       final item = await repo.addItem(
@@ -65,6 +71,16 @@ void main() {
     });
     await pumpApp(tester, HomePage(repository: repo, malClient: MalClient()));
 
+    // Nothing selected: the home view shows the continue-watching shelf.
+    expect(find.text('Continue watching'), findsOneWidget);
+    expect(find.text('S01E02 · 19:00 left'), findsOneWidget);
+    expect(find.text('Frieren'), findsNWidgets(2)); // sidebar + shelf card
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.descendant(of: find.byType(LibrarySidebar), matching: find.text('Frieren')));
+    await settle(tester);
+
+    expect(find.text('Continue watching'), findsNothing);
     expect(find.text('Frieren'), findsNWidgets(2)); // sidebar + header
     expect(find.text('Season 1'), findsOneWidget);
     expect(find.text('Specials'), findsOneWidget);

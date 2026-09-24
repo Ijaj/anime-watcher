@@ -69,7 +69,9 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 
 ## Phase 6 — Quality of life ⬜
 
-- ⬜ "Continue watching" shelf on the home screen across all shows.
+- ✅ "Continue watching" shelf on the home screen across all shows: shown
+  when no show is selected (the new Home button in the title block), most
+  recently watched first; click a card to resume, ⓘ to open the show.
 - ✅ Search / filter / sort in the sidebar (title filter; sort by title,
   recently watched or recently added — the sort choice is remembered).
 - ⬜ Settings page (MAL client ID, default library folder, theme, player

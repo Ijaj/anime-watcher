@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 
 import '../components/add_item_dialog.dart';
+import '../components/continue_watching_shelf.dart';
 import '../components/episode_list.dart';
 import '../components/item_header.dart';
 import '../components/library_sidebar.dart';
 import '../data/library_repository.dart';
+import '../models/continue_watching.dart';
 import '../models/episode.dart';
 import '../models/item.dart';
 import '../services/library_scanner.dart';
@@ -39,6 +41,7 @@ class _HomePageState extends State<HomePage> {
 
   List<LibraryEntry> _entries = [];
   List<Episode> _episodes = [];
+  List<ContinueWatching> _continue = [];
   int? _selectedId;
   bool _loaded = false;
   LibrarySort _sort = LibrarySort.title;
@@ -94,24 +97,27 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  /// Reloads the library and whatever the main panel shows: the selected
+  /// show's episodes, or the continue-watching shelf when nothing is
+  /// selected.
   Future<void> _reload() async {
     final entries = await _repo.entries();
     var selectedId = _selectedId;
-    if (!entries.any((e) => e.item.id == selectedId)) {
-      selectedId = entries.isEmpty ? null : entries.first.item.id;
-    }
+    if (!entries.any((e) => e.item.id == selectedId)) selectedId = null;
     final episodes = selectedId == null ? <Episode>[] : await _repo.episodes(selectedId);
+    final continueWatching = selectedId == null ? await _repo.continueWatching() : _continue;
     if (!mounted) return;
     setState(() {
       _entries = entries;
       _selectedId = selectedId;
       _episodes = episodes;
+      _continue = continueWatching;
       _loaded = true;
     });
   }
 
-  Future<void> _select(LibraryEntry entry) async {
-    setState(() => _selectedId = entry.item.id);
+  Future<void> _select(int? itemId) async {
+    setState(() => _selectedId = itemId);
     await _reload();
   }
 
@@ -130,7 +136,15 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _play(Episode episode) async {
     final entry = _selected;
-    if (entry == null) return;
+    if (entry != null) await _playFrom(entry.item, _episodes, episode);
+  }
+
+  Future<void> _playContinue(ContinueWatching c) async =>
+      _playFrom(c.entry.item, await _repo.episodes(c.entry.item.id!), c.episode);
+
+  Future<void> _playFrom(LibraryItem item, List<Episode> playlist, Episode episode) async {
+    final index = playlist.indexWhere((e) => e.id == episode.id);
+    if (index < 0) return;
     if (!await File(episode.path).exists()) {
       _toast('File not found: ${episode.path}\nTry “Rescan folder”.', error: true);
       return;
@@ -139,9 +153,9 @@ class _HomePageState extends State<HomePage> {
     await Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => PlayerPage(
         repository: _repo,
-        item: entry.item,
-        playlist: _episodes,
-        startIndex: _episodes.indexOf(episode),
+        item: item,
+        playlist: playlist,
+        startIndex: index,
       ),
     ));
     // Positions are saved without notifying, so refresh on return.
@@ -219,11 +233,28 @@ class _HomePageState extends State<HomePage> {
                         height: titleHeight,
                         width: double.infinity,
                         decoration: decoration,
-                        child: const Center(
-                          child: FittedBox(
-                            child: Text('ANIME WATCHER', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
+                        child: Column(children: [
+                          const Expanded(
+                            child: Center(
+                              child: FittedBox(
+                                child:
+                                    Text('ANIME WATCHER', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
+                              ),
+                            ),
                           ),
-                        ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              IconButton(
+                                tooltip: 'Home',
+                                isSelected: selected == null,
+                                onPressed: () => _select(null),
+                                icon: const Icon(Icons.home_outlined),
+                                selectedIcon: const Icon(Icons.home),
+                              ),
+                            ]),
+                          ),
+                        ]),
                       ),
                     ),
                     Expanded(
@@ -236,7 +267,7 @@ class _HomePageState extends State<HomePage> {
                               ? LibrarySidebar(
                                   entries: _entries,
                                   selectedId: _selectedId,
-                                  onSelected: _select,
+                                  onSelected: (e) => _select(e.item.id),
                                   sort: _sort,
                                   onSortChanged: _setSort,
                                 )
@@ -248,44 +279,58 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               Expanded(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(0, padding, padding, 0),
-                      child: Container(
-                        width: double.infinity,
-                        height: headerHeight,
-                        decoration: decoration,
-                        child: selected == null
-                            ? const Center(child: Text('Select a show, or click + to add one.'))
-                            : ItemHeader(
-                                entry: selected,
-                                nextUp: nextUp,
-                                onPlay: nextUp == null ? null : () => _play(nextUp),
-                                onAction: _onAction,
-                              ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Padding(
+                child: selected == null
+                    ? Padding(
                         padding: const EdgeInsets.fromLTRB(0, padding, padding, padding),
                         child: Container(
                           width: double.infinity,
                           decoration: decoration,
                           clipBehavior: Clip.antiAlias,
-                          child: selected == null
+                          child: !_loaded
                               ? const SizedBox.shrink()
-                              : EpisodeList(
+                              : _entries.isEmpty
+                                  ? const Center(child: Text('Click + to add a show folder.'))
+                                  : ContinueWatchingShelf(
+                                      items: _continue,
+                                      onPlay: _playContinue,
+                                      onOpenShow: (c) => _select(c.entry.item.id),
+                                    ),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(0, padding, padding, 0),
+                            child: Container(
+                              width: double.infinity,
+                              height: headerHeight,
+                              decoration: decoration,
+                              child: ItemHeader(
+                                entry: selected,
+                                nextUp: nextUp,
+                                onPlay: nextUp == null ? null : () => _play(nextUp),
+                                onAction: _onAction,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(0, padding, padding, padding),
+                              child: Container(
+                                width: double.infinity,
+                                decoration: decoration,
+                                clipBehavior: Clip.antiAlias,
+                                child: EpisodeList(
                                   episodes: _episodes,
                                   highlightId: nextUp?.id,
                                   onPlay: _play,
                                   onSetWatched: (e, watched) => _repo.setWatched(e.id!, watched),
                                 ),
-                        ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),

@@ -79,6 +79,32 @@ void main() {
     expect(entries.firstWhere((e) => e.item.rootPath == '/b').lastWatchedAt, isNull);
   });
 
+  test('continueWatching lists next-up episodes, most recently watched show first', () async {
+    Future<List<Episode>> add(String root, int count) async {
+      final saved = await repo.addItem(item(root), [
+        for (var n = 1; n <= count; n++) ScannedEpisode(season: 1, number: n, path: '$root/$n.mkv'),
+      ]);
+      return repo.episodes(saved.id!);
+    }
+
+    expect(await repo.continueWatching(), isEmpty);
+    final a = await add('/a', 3);
+    final b = await add('/b', 2);
+    final done = await add('/done', 1);
+    await add('/untouched', 2);
+
+    await repo.setWatched(a[0].id!, true);
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await repo.setWatched(done[0].id!, true);
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await repo.saveProgress(b[1].id!, position: const Duration(minutes: 3), duration: const Duration(minutes: 24));
+
+    final shelf = await repo.continueWatching();
+    expect([for (final c in shelf) '${c.entry.item.rootPath} ${c.episode.code}'], ['/b S01E02', '/a S01E02'],
+        reason: 'fully watched and never-watched shows are left out');
+    expect(shelf.first.episode.progress!.position, const Duration(minutes: 3));
+  });
+
   group('filterAndSort', () {
     LibraryEntry entry(String title, {int added = 0, int? watched}) => LibraryEntry(
           item: LibraryItem(
