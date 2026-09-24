@@ -89,7 +89,11 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
   missing folders — e.g. an unplugged drive — and folders that suddenly have
   no videos are skipped so their history is kept; one summary snackbar if
   anything changed).
-- ⬜ Keyboard shortcuts in the player (space, arrows, F for fullscreen).
+- ✅ Keyboard shortcuts in the player. media_kit's desktop controls already
+  handle space, J / I (±10 s), ← → (±2 s), ↑ ↓ (volume), F (fullscreen).
+  Added: N / P (and Shift+N / Shift+P, media next/previous keys) for the
+  next / previous episode, Esc to go back to the library (still leaves
+  fullscreen first).
 
 ## Phase 7 — Movies & TV series ⬜
 

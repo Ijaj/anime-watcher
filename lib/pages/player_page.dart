@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../components/player_shortcuts.dart';
 import '../data/library_repository.dart';
 import '../models/episode.dart';
 import '../models/item.dart';
@@ -128,10 +129,46 @@ class _PlayerPageState extends State<PlayerPage> {
     }
   }
 
+  bool get _hasPrev => _index > 0;
+  bool get _hasNext => _index + 1 < widget.playlist.length;
+
+  /// [videoContext] is inside the controls, so it knows whether the video is
+  /// fullscreen (fullscreen is a separate route that rebuilds the controls).
+  PlayerShortcutActions _shortcutActions(BuildContext videoContext) => PlayerShortcutActions(
+        play: _player.play,
+        pause: _player.pause,
+        playOrPause: _player.playOrPause,
+        seekBy: (offset) => _player.seek(_player.state.position + offset),
+        changeVolume: (delta) => _player.setVolume((_player.state.volume + delta).clamp(0.0, 100.0)),
+        toggleFullscreen: () => toggleFullscreen(videoContext),
+        escape: () {
+          if (isFullscreen(videoContext)) {
+            exitFullscreen(videoContext);
+          } else {
+            Navigator.of(context).maybePop();
+          }
+        },
+        nextEpisode: () {
+          if (_hasNext) _open(_index + 1);
+        },
+        previousEpisode: () {
+          if (_hasPrev) _open(_index - 1);
+        },
+      );
+
+  Widget _controls(VideoState state) => Builder(builder: (videoContext) {
+        final shortcuts = playerShortcuts(_shortcutActions(videoContext));
+        return MaterialDesktopVideoControlsTheme(
+          normal: kDefaultMaterialDesktopVideoControlsThemeData.copyWith(keyboardShortcuts: shortcuts),
+          fullscreen: kDefaultMaterialDesktopVideoControlsThemeDataFullscreen.copyWith(keyboardShortcuts: shortcuts),
+          child: MaterialDesktopVideoControls(state),
+        );
+      });
+
   @override
   Widget build(BuildContext context) {
-    final hasPrev = _index > 0;
-    final hasNext = _index + 1 < widget.playlist.length;
+    final hasPrev = _hasPrev;
+    final hasNext = _hasNext;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Column(
@@ -150,13 +187,13 @@ class _PlayerPageState extends State<PlayerPage> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Previous episode',
+                  tooltip: 'Previous episode (P)',
                   color: Colors.white,
                   onPressed: hasPrev ? () => _open(_index - 1) : null,
                   icon: const Icon(Icons.skip_previous),
                 ),
                 IconButton(
-                  tooltip: 'Next episode',
+                  tooltip: 'Next episode (N)',
                   color: Colors.white,
                   onPressed: hasNext ? () => _open(_index + 1) : null,
                   icon: const Icon(Icons.skip_next),
@@ -167,7 +204,7 @@ class _PlayerPageState extends State<PlayerPage> {
           ),
           Expanded(
             child: Stack(children: [
-              Positioned.fill(child: Video(controller: _controller)),
+              Positioned.fill(child: Video(controller: _controller, controls: _controls)),
               if (_error != null)
                 Positioned(
                   left: 16,
