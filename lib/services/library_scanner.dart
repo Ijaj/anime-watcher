@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../models/episode.dart';
+import '../models/item.dart';
 import 'title_parser.dart';
 
 /// Finds the video files of a show on disk and works out their season and
@@ -50,6 +51,18 @@ class LibraryScanner {
       files.add(entity.path);
     }
     return assign(rootPath, files, rootSeason: rootSeason);
+  }
+
+  /// Scan for the startup rescan ([LibraryRepository.syncAll]): returns
+  /// null, leaving the item untouched, when its folder is missing (e.g. an
+  /// unplugged drive) or when a folder that had episodes now has none, which
+  /// usually means a drive or network share is only partly available —
+  /// syncing that would wipe the show's episodes and watch history.
+  static Future<List<ScannedEpisode>?> rescan(LibraryEntry entry) async {
+    if (!await Directory(entry.item.rootPath).exists()) return null;
+    final episodes = await scan(entry.item.rootPath);
+    if (episodes.isEmpty && entry.episodeCount > 0) return null;
+    return episodes;
   }
 
   /// Assigns season/episode numbers to [files] under [rootPath]. Split out

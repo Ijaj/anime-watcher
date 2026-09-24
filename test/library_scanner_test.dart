@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:anime_watcher/models/item.dart';
 import 'package:anime_watcher/services/library_scanner.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -58,5 +59,27 @@ void main() {
 
   test('missing folder throws', () {
     expect(LibraryScanner.scan(p.join(tmp.path, 'nope')), throwsA(isA<FileSystemException>()));
+  });
+
+  group('rescan', () {
+    LibraryEntry entry(String root, int episodeCount) => LibraryEntry(
+          item: LibraryItem(type: MediaType.anime, title: 'Show', rootPath: root),
+          episodeCount: episodeCount,
+          watchedCount: 0,
+        );
+
+    test('missing folder is skipped', () async {
+      expect(await LibraryScanner.rescan(entry(p.join(tmp.path, 'unplugged'), 3)), isNull);
+    });
+    test('a folder that lost every file is skipped', () async {
+      expect(await LibraryScanner.rescan(entry(tmp.path, 3)), isNull);
+    });
+    test('an empty folder that never had episodes is scanned', () async {
+      expect(await LibraryScanner.rescan(entry(tmp.path, 0)), isEmpty);
+    });
+    test('an available folder is scanned', () async {
+      await touch('Show - 01.mkv');
+      expect(await LibraryScanner.rescan(entry(tmp.path, 3)), hasLength(1));
+    });
   });
 }

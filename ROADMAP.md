@@ -80,7 +80,10 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
   library is scanned and matched on MAL (top result), then reviewed (keep,
   change match, search again, add without metadata, or skip) and added.
 - ⬜ Cache cover images locally for offline use.
-- ⬜ Detect new episodes on disk at startup (auto-rescan).
+- ✅ Detect new episodes on disk at startup (auto-rescan in the background;
+  missing folders — e.g. an unplugged drive — and folders that suddenly have
+  no videos are skipped so their history is kept; one summary snackbar if
+  anything changed).
 - ⬜ Keyboard shortcuts in the player (space, arrows, F for fullscreen).
 
 ## Phase 7 — Movies & TV series ⬜

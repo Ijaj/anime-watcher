@@ -52,7 +52,7 @@ void main() {
 
   testWidgets('empty library shows the empty state', (tester) async {
     await tester.runAsync(() async => repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath)));
-    await pumpApp(tester, HomePage(repository: repo, malClient: MalClient()));
+    await pumpApp(tester, HomePage(repository: repo, malClient: MalClient(), autoRescan: false));
 
     expect(find.textContaining('Your library is empty'), findsOneWidget);
     expect(find.text('Click + to add a show folder.'), findsOneWidget);
@@ -82,7 +82,7 @@ void main() {
       await repo.setWatched(eps.first.id!, true);
       await repo.saveProgress(eps[1].id!, position: const Duration(minutes: 5), duration: const Duration(minutes: 24));
     });
-    await pumpApp(tester, HomePage(repository: repo, malClient: MalClient()));
+    await pumpApp(tester, HomePage(repository: repo, malClient: MalClient(), autoRescan: false));
 
     // Nothing selected: the home view shows the continue-watching shelf.
     expect(find.text('Continue watching'), findsOneWidget);
@@ -111,7 +111,7 @@ void main() {
         await repo.addItem(LibraryItem(type: MediaType.anime, title: title, rootPath: '/$title'), const []);
       }
     });
-    await pumpApp(tester, HomePage(repository: repo, malClient: MalClient()));
+    await pumpApp(tester, HomePage(repository: repo, malClient: MalClient(), autoRescan: false));
 
     await tester.enterText(find.widgetWithText(TextField, 'Search library'), 'psycho');
     await tester.pump();
@@ -166,5 +166,28 @@ void main() {
       titles = await tester.runAsync(() async => [for (final e in await repo.entries()) e.item.title]);
     }
     expect(titles, ['Mob Psycho 100', 'Sousou no Frieren']);
+  });
+
+  testWidgets('startup rescan adds new files and reports it once', (tester) async {
+    late Directory tmp;
+    await tester.runAsync(() async {
+      repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath));
+      tmp = await Directory.systemTemp.createTemp('rescan_widget');
+      for (final f in ['Show - 01.mkv', 'Show - 02.mkv']) {
+        await File(p.join(tmp.path, f)).create();
+      }
+      await repo.addItem(LibraryItem(type: MediaType.anime, title: 'Show', rootPath: tmp.path),
+          [ScannedEpisode(season: 1, number: 1, path: p.join(tmp.path, 'Show - 01.mkv'))]);
+      await repo.addItem(LibraryItem(type: MediaType.anime, title: 'Unplugged', rootPath: p.join(tmp.path, 'nope')),
+          const [ScannedEpisode(season: 1, number: 1, path: '/nope/1.mkv')]);
+    });
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    await pumpApp(tester, HomePage(repository: repo, malClient: MalClient()));
+
+    final snack = find.text('Library updated in 1 show. New: 1 episode · 1 folder unavailable');
+    await settleUntil(tester, snack);
+    expect(snack, findsOneWidget);
+    expect(find.text('0/2'), findsOneWidget, reason: 'Show now has 2 episodes');
+    expect(tester.takeException(), isNull);
   });
 }

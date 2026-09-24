@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:anime_watcher/data/app_database.dart';
 import 'package:anime_watcher/data/library_repository.dart';
 import 'package:anime_watcher/models/episode.dart';
@@ -66,6 +68,42 @@ void main() {
     expect((added, removed), (1, 1));
     final eps = await repo.episodes(saved.id!);
     expect(eps.map((e) => e.code), ['S01E01', 'S01E03', 'S01E04']);
+  });
+
+  test('syncAll syncs every item, skips unavailable ones and notifies once', () async {
+    final a = await repo.addItem(item('/a'), const [ScannedEpisode(season: 1, number: 1, path: '/a/1.mkv')]);
+    await repo.addItem(item('/b'), const [ScannedEpisode(season: 1, number: 1, path: '/b/1.mkv')]);
+    await repo.addItem(item('/gone'), const [ScannedEpisode(season: 1, number: 1, path: '/gone/1.mkv')]);
+    await repo.addItem(item('/broken'), const []);
+    var notified = 0;
+    repo.addListener(() => notified++);
+
+    final summary = await repo.syncAll((entry) async => switch (entry.item.rootPath) {
+          '/a' => const [
+              ScannedEpisode(season: 1, number: 1, path: '/a/1.mkv'),
+              ScannedEpisode(season: 1, number: 2, path: '/a/2.mkv'),
+              ScannedEpisode(season: 1, number: 3, path: '/a/3.mkv'),
+            ],
+          '/b' => const [],
+          '/broken' => throw const FileSystemException('denied'),
+          _ => null,
+        });
+    expect((summary.added, summary.removed, summary.changedShows, summary.unavailable), (2, 1, 2, 2));
+    expect(summary.changed, isTrue);
+    expect(notified, 1);
+    expect((await repo.episodes(a.id!)).length, 3);
+    final gone = (await repo.entries()).firstWhere((e) => e.item.rootPath == '/gone');
+    expect(gone.episodeCount, 1, reason: 'unavailable folders keep their episodes');
+
+    final unchanged = await repo.syncAll((entry) async => null);
+    expect(unchanged.changed, isFalse);
+    expect(notified, 1, reason: 'no change, no notification');
+  });
+
+  test('RescanSummary.describe', () {
+    expect(const RescanSummary(added: 3, removed: 1, changedShows: 2, unavailable: 1).describe(),
+        'Library updated in 2 shows. New: 3 episodes, removed: 1 episode · 1 folder unavailable');
+    expect(const RescanSummary(added: 1, changedShows: 1).describe(), 'Library updated in 1 show. New: 1 episode');
   });
 
   test('entries report when an item was last watched', () async {

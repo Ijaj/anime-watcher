@@ -22,7 +22,10 @@ class HomePage extends StatefulWidget {
   final LibraryRepository repository;
   final MalClient malClient;
 
-  const HomePage({super.key, required this.repository, required this.malClient});
+  /// Sync every show with its folder in the background after startup.
+  final bool autoRescan;
+
+  const HomePage({super.key, required this.repository, required this.malClient, this.autoRescan = true});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -90,6 +93,13 @@ class _HomePageState extends State<HomePage> {
     _repo.setting(_sortKey).then((v) {
       if (mounted) setState(() => _sort = LibrarySort.fromName(v));
     });
+    if (widget.autoRescan) _rescanAll();
+  }
+
+  /// Picks up new or deleted episode files, skipping unavailable folders.
+  Future<void> _rescanAll() async {
+    final summary = await _repo.syncAll(LibraryScanner.rescan);
+    if (summary.changed) _toast(summary.describe());
   }
 
   @override

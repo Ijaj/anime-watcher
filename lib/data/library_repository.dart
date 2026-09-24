@@ -14,6 +14,41 @@ class DuplicateItemException implements Exception {
   String toString() => 'This folder is already in your library:\n$rootPath';
 }
 
+/// Outcome of [LibraryRepository.syncAll].
+class RescanSummary {
+  final int added;
+  final int removed;
+
+  /// Shows that gained or lost episodes.
+  final int changedShows;
+
+  /// Shows skipped because their folder could not be scanned.
+  final int unavailable;
+
+  const RescanSummary({this.added = 0, this.removed = 0, this.changedShows = 0, this.unavailable = 0});
+
+  bool get changed => added + removed > 0;
+
+  RescanSummary copyWith({int? added, int? removed, int? changedShows, int? unavailable}) => RescanSummary(
+        added: added ?? this.added,
+        removed: removed ?? this.removed,
+        changedShows: changedShows ?? this.changedShows,
+        unavailable: unavailable ?? this.unavailable,
+      );
+
+  /// e.g. "Library updated in 2 shows. New: 3 episodes, removed: 1 episode · 1 folder unavailable".
+  String describe() {
+    String plural(int n, String word) => '$n $word${n == 1 ? '' : 's'}';
+    final parts = [
+      if (added > 0) 'New: ${plural(added, 'episode')}',
+      if (removed > 0) 'removed: ${plural(removed, 'episode')}',
+    ];
+    final text = StringBuffer('Library updated in ${plural(changedShows, 'show')}. ${parts.join(', ')}');
+    if (unavailable > 0) text.write(' · ${plural(unavailable, 'folder')} unavailable');
+    return text.toString();
+  }
+}
+
 /// All reads and writes of library data. Notifies listeners whenever the
 /// library, episode list, or watched state changes.
 class LibraryRepository extends ChangeNotifier {
@@ -149,12 +184,52 @@ class LibraryRepository extends ChangeNotifier {
   /// added, missing files are removed (with their progress), and moved
   /// season/episode numbers are updated. Returns (added, removed).
   Future<(int, int)> syncEpisodes(int itemId, List<ScannedEpisode> scanned) async {
-    final result = await _db.transaction((txn) async {
+    final (added, removed, _) = await _sync(itemId, scanned);
+    notifyListeners();
+    return (added, removed);
+  }
+
+  /// Syncs every library item with the episodes [scan] returns for it (see
+  /// [syncEpisodes]); when [scan] returns null the item is left untouched.
+  /// Listeners are notified once, at the end, and only if anything changed.
+  Future<RescanSummary> syncAll(Future<List<ScannedEpisode>?> Function(LibraryEntry entry) scan) async {
+    var summary = const RescanSummary();
+    var anyChange = false;
+    for (final entry in await entries()) {
+      final List<ScannedEpisode>? scanned;
+      try {
+        scanned = await scan(entry);
+      } catch (_) {
+        summary = summary.copyWith(unavailable: summary.unavailable + 1);
+        continue;
+      }
+      if (scanned == null) {
+        summary = summary.copyWith(unavailable: summary.unavailable + 1);
+        continue;
+      }
+      final (added, removed, renumbered) = await _sync(entry.item.id!, scanned);
+      anyChange |= added + removed + renumbered > 0;
+      if (added + removed > 0) {
+        summary = summary.copyWith(
+          added: summary.added + added,
+          removed: summary.removed + removed,
+          changedShows: summary.changedShows + 1,
+        );
+      }
+    }
+    if (anyChange) notifyListeners();
+    return summary;
+  }
+
+  /// Returns (added, removed, renumbered).
+  Future<(int, int, int)> _sync(int itemId, List<ScannedEpisode> scanned) {
+    return _db.transaction((txn) async {
       final existing = {
         for (final r in await txn.query('episodes', where: 'item_id = ?', whereArgs: [itemId])) r['path'] as String: r,
       };
       final seen = <String>{};
       var added = 0;
+      var renumbered = 0;
       final batch = txn.batch();
       for (final e in scanned) {
         seen.add(e.path);
@@ -164,6 +239,7 @@ class LibraryRepository extends ChangeNotifier {
           added++;
         } else if (row['season'] != e.season || row['number'] != e.number) {
           batch.update('episodes', {'season': e.season, 'number': e.number}, where: 'id = ?', whereArgs: [row['id']]);
+          renumbered++;
         }
       }
       final missing = existing.keys.where((path) => !seen.contains(path)).toList();
@@ -171,10 +247,8 @@ class LibraryRepository extends ChangeNotifier {
         batch.delete('episodes', where: 'id = ?', whereArgs: [existing[path]!['id']]);
       }
       await batch.commit(noResult: true);
-      return (added, missing.length);
+      return (added, missing.length, renumbered);
     });
-    notifyListeners();
-    return result;
   }
 
   Map<String, Object?> _episodeRow(int itemId, ScannedEpisode e) =>
