@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Anime Watcher
+Comment=Track and play the anime you already have on disk
+Exec=anime-watcher
+Icon=anime-watcher
+Terminal=false
+Categories=AudioVideo;Player;
+StartupWMClass=anime_watcher

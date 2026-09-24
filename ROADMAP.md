@@ -7,9 +7,11 @@ a built-in player, and remembers exactly where you left off.
 Status legend: ✅ done · 🚧 in progress · ⬜ not started
 
 > Phases 1–6 are implemented and covered by unit/widget tests
-> (`flutter test`, run in CI), but have **not yet been tried in a running
-> desktop build**. Still needing a manual check on Windows/Linux: video
-> playback and the player shortcuts (media_kit), the native folder pickers
+> (`flutter test`, run in CI). The Linux build now compiles
+> (`flutter build linux --release`) and has been smoke-tested: it launches,
+> initializes GTK/Impeller and the mpv-backed player plugin without errors.
+> Still needing a manual, interactive check on Windows/Linux: actually
+> playing a video and the player shortcuts, the native folder pickers
 > (single and bulk import), the acrylic window, real MyAnimeList requests
 > and cover downloads, and the startup rescan against real drives.
 
@@ -115,7 +117,12 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
   3.16.9 when that constraint is loosened to `>=2.3.0 <2.3.3`; decide
   whether to lower the constraint or raise the SDK floor.
 - ✅ CI (format + analyze + test) via GitHub Actions on ubuntu-latest.
-- ⬜ Windows installer (MSIX) and Linux bundle; app icon.
+- ✅ Linux bundle + installer: `flutter build linux --release` produces a
+  self-contained `bundle/`; `packaging/linux/install.sh` installs it
+  per-user or system-wide, adds a launcher and app-menu entry, and installs
+  the mpv/sqlite3/gtk3 runtime libraries via pacman/apt/dnf/zypper.
+- ⬜ Windows installer (MSIX); app icon for the Linux .desktop entry beyond
+  the placeholder `assets/logo.png`.
 
 ---
 
