@@ -123,7 +123,8 @@ class _SidebarTile extends StatelessWidget {
           child: SizedBox(
             height: 84,
             child: Row(children: [
-              CoverImage(url: entry.item.imageMedium, width: 56, height: 84, borderRadius: 0),
+              CoverImage(
+                  path: entry.item.coverPath, url: entry.item.imageMedium, width: 56, height: 84, borderRadius: 0),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

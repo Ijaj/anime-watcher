@@ -82,7 +82,9 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 - ✅ Bulk import: pick a parent folder; every sub-folder not already in the
   library is scanned and matched on MAL (top result), then reviewed (keep,
   change match, search again, add without metadata, or skip) and added.
-- ⬜ Cache cover images locally for offline use.
+- ✅ Cache cover images locally for offline use (`<app-support>/covers/`,
+  schema v2 adds `items.cover_path`; downloaded after adding and at startup
+  for any item missing one; falls back to the network URL).
 - ✅ Detect new episodes on disk at startup (auto-rescan in the background;
   missing folders — e.g. an unplugged drive — and folders that suddenly have
   no videos are skipped so their history is kept; one summary snackbar if

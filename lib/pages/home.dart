@@ -14,6 +14,7 @@ import '../data/library_repository.dart';
 import '../models/continue_watching.dart';
 import '../models/episode.dart';
 import '../models/item.dart';
+import '../services/cover_cache.dart';
 import '../services/library_scanner.dart';
 import '../services/mal_client.dart';
 import 'player_page.dart';
@@ -26,7 +27,16 @@ class HomePage extends StatefulWidget {
   /// Sync every show with its folder in the background after startup.
   final bool autoRescan;
 
-  const HomePage({super.key, required this.repository, required this.malClient, this.autoRescan = true});
+  /// Downloads covers for offline use; null disables caching (tests).
+  final CoverCache? coverCache;
+
+  const HomePage({
+    super.key,
+    required this.repository,
+    required this.malClient,
+    this.autoRescan = true,
+    this.coverCache,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -95,7 +105,11 @@ class _HomePageState extends State<HomePage> {
       if (mounted) setState(() => _sort = LibrarySort.fromName(v));
     });
     if (widget.autoRescan) _rescanAll();
+    _cacheCovers();
   }
+
+  /// Fills in any missing local covers in the background.
+  void _cacheCovers() => widget.coverCache?.cacheMissing(_repo);
 
   /// Picks up new or deleted episode files, skipping unavailable folders.
   Future<void> _rescanAll() async {
@@ -144,11 +158,13 @@ class _HomePageState extends State<HomePage> {
     setState(() => _selectedId = item.id);
     await _reload();
     _toast('Added ${item.title}');
+    _cacheCovers();
   }
 
   Future<void> _bulkImport() async {
     final result = await BulkImportDialog.show(context, _repo, widget.malClient);
     if (result == null || !mounted) return;
+    _cacheCovers();
     final failed = result.failures.isEmpty ? '' : '\nNot added:\n${result.failures.join('\n')}';
     _toast('Added ${result.added} ${result.added == 1 ? 'show' : 'shows'}$failed', error: result.failures.isNotEmpty);
   }
@@ -210,7 +226,10 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         );
-        if (confirmed == true) await _repo.removeItem(item.id!);
+        if (confirmed == true) {
+          await _repo.removeItem(item.id!);
+          await widget.coverCache?.evict(item.id!);
+        }
     }
   }
 

@@ -57,6 +57,7 @@ class _ShelfCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Stack(children: [
               CoverImage(
+                path: item.entry.item.coverPath,
                 url: item.entry.item.imageLarge ?? item.entry.item.imageMedium,
                 width: width,
                 height: 250,

@@ -4,7 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// Opens the app's single SQLite database and runs schema migrations.
 class AppDatabase {
-  static const int version = 1;
+  static const int version = 2;
   static const String fileName = 'anime_watcher.db';
 
   /// Opens the database. Pass [path] (e.g. [inMemoryDatabasePath]) and
@@ -65,6 +65,10 @@ class AppDatabase {
           key TEXT PRIMARY KEY,
           value TEXT
         )''');
+    }
+    if (from < 2) {
+      // Local copy of the cover image (see CoverCache).
+      batch.execute('ALTER TABLE items ADD COLUMN cover_path TEXT');
     }
     await batch.commit(noResult: true);
   }

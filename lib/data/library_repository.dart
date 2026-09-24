@@ -151,6 +151,11 @@ class LibraryRepository extends ChangeNotifier {
     return saved;
   }
 
+  /// Records where the item's cover was cached. Does not notify: the UI
+  /// already shows the network image and picks the file up on next reload.
+  Future<void> setCoverPath(int id, String? path) =>
+      _db.update('items', {'cover_path': path}, where: 'id = ?', whereArgs: [id]);
+
   Future<void> removeItem(int id) async {
     await _db.delete('items', where: 'id = ?', whereArgs: [id]);
     notifyListeners();

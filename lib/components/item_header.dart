@@ -31,7 +31,7 @@ class ItemHeader extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        CoverImage(url: item.imageLarge ?? item.imageMedium, width: 150, height: 212),
+        CoverImage(path: item.coverPath, url: item.imageLarge ?? item.imageMedium, width: 150, height: 212),
         const SizedBox(width: 20),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
