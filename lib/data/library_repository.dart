@@ -52,9 +52,20 @@ class RescanSummary {
 /// All reads and writes of library data. Notifies listeners whenever the
 /// library, episode list, or watched state changes.
 class LibraryRepository extends ChangeNotifier {
+  static const malClientIdKey = 'mal_client_id';
+  static const watchedThresholdKey = 'watched_threshold';
+  static const minWatchedThreshold = 0.5;
+
   final Database _db;
+  double _watchedThreshold = AppConfig.watchedThreshold;
 
   LibraryRepository(this._db);
+
+  /// Loads settings that are read synchronously ([watchedThreshold]).
+  Future<void> loadSettings() async {
+    final threshold = double.tryParse(await setting(watchedThresholdKey) ?? '');
+    _watchedThreshold = threshold == null ? AppConfig.watchedThreshold : _clampThreshold(threshold);
+  }
 
   Future<void> close() => _db.close();
 
@@ -260,7 +271,7 @@ class LibraryRepository extends ChangeNotifier {
   /// completed until [setWatched] clears it.
   Future<void> saveProgress(int episodeId, {required Duration position, required Duration duration}) async {
     final completed =
-        duration > Duration.zero && position.inMilliseconds >= duration.inMilliseconds * AppConfig.watchedThreshold;
+        duration > Duration.zero && position.inMilliseconds >= duration.inMilliseconds * _watchedThreshold;
     final before =
         await _db.query('watch_progress', columns: ['completed'], where: 'episode_id = ?', whereArgs: [episodeId]);
     await _db.rawInsert('''
@@ -321,7 +332,42 @@ class LibraryRepository extends ChangeNotifier {
     return null;
   }
 
+  /// Deletes all playback positions and watched flags.
+  Future<void> clearWatchHistory() async {
+    await _db.delete('watch_progress');
+    notifyListeners();
+  }
+
   // ------------------------------------------------------------- settings
+
+  /// Fraction of an episode that must be played for it to count as watched.
+  /// Changing it does not re-evaluate episodes that were already saved.
+  double get watchedThreshold => _watchedThreshold;
+
+  Future<void> setWatchedThreshold(double value) async {
+    _watchedThreshold = _clampThreshold(value);
+    await setSetting(watchedThresholdKey, _watchedThreshold.toString());
+  }
+
+  static double _clampThreshold(double v) => v.clamp(minWatchedThreshold, 1.0).toDouble();
+
+  /// The user's MyAnimeList client ID, or null to use [AppConfig.malClientId].
+  Future<String?> malClientIdOverride() async {
+    final id = (await setting(malClientIdKey))?.trim();
+    return id == null || id.isEmpty ? null : id;
+  }
+
+  Future<String> malClientId() async => await malClientIdOverride() ?? AppConfig.malClientId;
+
+  /// Stores a client ID override; null or blank restores the default.
+  Future<void> setMalClientId(String? id) async {
+    id = id?.trim();
+    if (id == null || id.isEmpty) {
+      await _db.delete('settings', where: 'key = ?', whereArgs: [malClientIdKey]);
+    } else {
+      await setSetting(malClientIdKey, id);
+    }
+  }
 
   Future<String?> setting(String key) async {
     final rows = await _db.query('settings', where: 'key = ?', whereArgs: [key]);

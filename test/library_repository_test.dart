@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:anime_watcher/config.dart';
 import 'package:anime_watcher/data/app_database.dart';
 import 'package:anime_watcher/data/library_repository.dart';
 import 'package:anime_watcher/models/episode.dart';
@@ -56,6 +57,53 @@ void main() {
 
     await repo.setWatched(ep.id!, false);
     expect((await repo.episodes(saved.id!)).first.progress, isNull);
+  });
+
+  test('watched threshold is configurable and persisted', () async {
+    final saved = await repo.addItem(item('/show'), scanned);
+    final ep = (await repo.episodes(saved.id!)).first;
+    await repo.setWatchedThreshold(0.5);
+    await repo.saveProgress(ep.id!, position: const Duration(minutes: 13), duration: const Duration(minutes: 24));
+    expect((await repo.episodes(saved.id!)).first.completed, isTrue);
+
+    await repo.setWatchedThreshold(0.1);
+    expect(repo.watchedThreshold, LibraryRepository.minWatchedThreshold, reason: 'clamped');
+    await repo.setWatchedThreshold(0.8);
+    expect(await repo.setting(LibraryRepository.watchedThresholdKey), '0.8');
+  });
+
+  test('loadSettings reads the stored threshold', () async {
+    expect(repo.watchedThreshold, AppConfig.watchedThreshold);
+    await repo.setSetting(LibraryRepository.watchedThresholdKey, '0.75');
+    await repo.loadSettings();
+    expect(repo.watchedThreshold, 0.75);
+    await repo.setSetting(LibraryRepository.watchedThresholdKey, 'garbage');
+    await repo.loadSettings();
+    expect(repo.watchedThreshold, AppConfig.watchedThreshold);
+  });
+
+  test('MAL client ID override falls back to the default', () async {
+    expect(await repo.malClientId(), AppConfig.malClientId);
+    await repo.setMalClientId('  abc123 ');
+    expect(await repo.malClientIdOverride(), 'abc123');
+    expect(await repo.malClientId(), 'abc123');
+    await repo.setMalClientId('   ');
+    expect(await repo.malClientIdOverride(), isNull);
+    expect(await repo.malClientId(), AppConfig.malClientId);
+  });
+
+  test('clearWatchHistory forgets all progress', () async {
+    final saved = await repo.addItem(item('/show'), scanned);
+    final eps = await repo.episodes(saved.id!);
+    await repo.setWatched(eps[0].id!, true);
+    await repo.saveProgress(eps[1].id!, position: const Duration(minutes: 3), duration: const Duration(minutes: 24));
+    var notified = false;
+    repo.addListener(() => notified = true);
+
+    await repo.clearWatchHistory();
+    expect((await repo.episodes(saved.id!)).every((e) => e.progress == null), isTrue);
+    expect((await repo.entries()).single.watchedCount, 0);
+    expect(notified, isTrue);
   });
 
   test('syncEpisodes adds new files and drops missing ones', () async {

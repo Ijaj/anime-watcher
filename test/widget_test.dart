@@ -8,6 +8,7 @@ import 'package:anime_watcher/data/library_repository.dart';
 import 'package:anime_watcher/models/episode.dart';
 import 'package:anime_watcher/models/item.dart';
 import 'package:anime_watcher/pages/home.dart';
+import 'package:anime_watcher/pages/settings_page.dart';
 import 'package:anime_watcher/services/mal_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -188,6 +189,39 @@ void main() {
     await settleUntil(tester, snack);
     expect(snack, findsOneWidget);
     expect(find.text('0/2'), findsOneWidget, reason: 'Show now has 2 episodes');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settings page saves the client ID and clears history', (tester) async {
+    late int episodeId;
+    await tester.runAsync(() async {
+      repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath));
+      final item = await repo.addItem(LibraryItem(type: MediaType.anime, title: 'Show', rootPath: '/show'),
+          const [ScannedEpisode(season: 1, number: 1, path: '/show/1.mkv')]);
+      episodeId = (await repo.episodes(item.id!)).single.id!;
+      await repo.setWatched(episodeId, true);
+    });
+    final mal = MalClient();
+    await pumpApp(tester, SettingsPage(repository: repo, malClient: mal));
+
+    expect(find.text('Using the built-in client ID'), findsOneWidget);
+    expect(find.text('Mark an episode as watched after 90 % of it has played'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Client ID'), 'my-id');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await settle(tester);
+    expect(mal.clientId, 'my-id');
+    expect(find.text('Using your client ID'), findsOneWidget);
+
+    await tester.tap(find.text('Clear Watch History'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear History'));
+    await settleUntil(tester, find.text('Watch history cleared'));
+    final eps = await tester.runAsync(() => repo.episodes(1));
+    expect(eps!.single.progress, isNull);
+    expect(find.text('Watch history cleared'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

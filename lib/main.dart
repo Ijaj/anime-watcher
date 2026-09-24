@@ -18,8 +18,10 @@ void main() async {
 
   await Window.initialize();
   final repository = LibraryRepository(await AppDatabase.open());
+  await repository.loadSettings();
+  final malClient = MalClient(clientId: await repository.malClientId());
 
-  runApp(MyApp(repository: repository, malClient: MalClient()));
+  runApp(MyApp(repository: repository, malClient: malClient));
   if (Platform.isWindows) {
     doWhenWindowReady(() {
       appWindow

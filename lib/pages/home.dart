@@ -17,6 +17,7 @@ import '../models/item.dart';
 import '../services/library_scanner.dart';
 import '../services/mal_client.dart';
 import 'player_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
   final LibraryRepository repository;
@@ -152,6 +153,10 @@ class _HomePageState extends State<HomePage> {
     _toast('Added ${result.added} ${result.added == 1 ? 'show' : 'shows'}$failed', error: result.failures.isNotEmpty);
   }
 
+  Future<void> _openSettings() => Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => SettingsPage(repository: _repo, malClient: widget.malClient),
+      ));
+
   Future<void> _play(Episode episode) async {
     final entry = _selected;
     if (entry != null) await _playFrom(entry.item, _episodes, episode);
@@ -274,6 +279,11 @@ class _HomePageState extends State<HomePage> {
                                 tooltip: 'Import a folder of shows',
                                 onPressed: _bulkImport,
                                 icon: const Icon(Icons.drive_folder_upload_outlined),
+                              ),
+                              IconButton(
+                                tooltip: 'Settings',
+                                onPressed: _openSettings,
+                                icon: const Icon(Icons.settings_outlined),
                               ),
                             ]),
                           ),

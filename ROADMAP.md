@@ -74,8 +74,11 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
   recently watched first; click a card to resume, ⓘ to open the show.
 - ✅ Search / filter / sort in the sidebar (title filter; sort by title,
   recently watched or recently added — the sort choice is remembered).
-- ⬜ Settings page (MAL client ID, default library folder, theme, player
-  defaults like subtitle/audio language).
+- 🚧 Settings page (gear button in the title block):
+  - ✅ MAL client ID (stored in `settings`, overrides the built-in /
+    `--dart-define` one), watched threshold (50–100 %), clear watch history.
+  - ⬜ Default library folder, theme, player defaults (subtitle/audio
+    language).
 - ✅ Bulk import: pick a parent folder; every sub-folder not already in the
   library is scanned and matched on MAL (top result), then reviewed (keep,
   change match, search again, add without metadata, or skip) and added.
