@@ -29,7 +29,9 @@ class LibraryRepository extends ChangeNotifier {
       SELECT i.*,
         (SELECT COUNT(*) FROM episodes e WHERE e.item_id = i.id) AS episode_count,
         (SELECT COUNT(*) FROM episodes e JOIN watch_progress w ON w.episode_id = e.id
-           WHERE e.item_id = i.id AND w.completed = 1) AS watched_count
+           WHERE e.item_id = i.id AND w.completed = 1) AS watched_count,
+        (SELECT MAX(w.updated_at) FROM episodes e JOIN watch_progress w ON w.episode_id = e.id
+           WHERE e.item_id = i.id) AS last_watched
       FROM items i
       ORDER BY i.title COLLATE NOCASE''');
     return [
@@ -38,9 +40,42 @@ class LibraryRepository extends ChangeNotifier {
           item: LibraryItem.fromMap(r),
           episodeCount: r['episode_count'] as int,
           watchedCount: r['watched_count'] as int,
+          lastWatchedAt:
+              r['last_watched'] == null ? null : DateTime.fromMillisecondsSinceEpoch(r['last_watched'] as int),
         ),
     ];
   }
+
+  /// Entries whose title contains every word of [query] (case- and
+  /// punctuation-insensitive), ordered by [sort]. Ties, and never-watched
+  /// items when sorting by recently watched, fall back to title order.
+  static List<LibraryEntry> filterAndSort(List<LibraryEntry> entries,
+      {String query = '', LibrarySort sort = LibrarySort.title}) {
+    final words = _normalize(query).split(' ').where((w) => w.isNotEmpty).toList();
+    final result = [
+      for (final e in entries)
+        if (words.every(_normalize(e.item.title).contains)) e,
+    ];
+    int byTitle(LibraryEntry a, LibraryEntry b) => a.item.title.toLowerCase().compareTo(b.item.title.toLowerCase());
+    int newestFirst(DateTime? a, DateTime? b) {
+      if (a == b) return 0;
+      if (a == null) return 1;
+      if (b == null) return -1;
+      return b.compareTo(a);
+    }
+
+    result.sort((a, b) {
+      final c = switch (sort) {
+        LibrarySort.title => 0,
+        LibrarySort.recentlyWatched => newestFirst(a.lastWatchedAt, b.lastWatchedAt),
+        LibrarySort.recentlyAdded => newestFirst(a.item.addedAt, b.item.addedAt),
+      };
+      return c != 0 ? c : byTitle(a, b);
+    });
+    return result;
+  }
+
+  static String _normalize(String s) => s.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ');
 
   Future<LibraryItem?> item(int id) async {
     final rows = await _db.query('items', where: 'id = ?', whereArgs: [id]);

@@ -75,6 +75,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('sidebar search filters the library', (tester) async {
+    await tester.runAsync(() async {
+      repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath));
+      for (final title in ['Frieren', 'Mob Psycho 100', 'One Piece']) {
+        await repo.addItem(LibraryItem(type: MediaType.anime, title: title, rootPath: '/$title'), const []);
+      }
+    });
+    await pumpApp(tester, HomePage(repository: repo, malClient: MalClient()));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Search library'), 'psycho');
+    await tester.pump();
+    expect(find.text('Mob Psycho 100'), findsWidgets);
+    expect(find.text('One Piece'), findsNothing);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Search library'), 'zzz');
+    await tester.pump();
+    expect(find.text('No shows match your search.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('add dialog lays out without overflow', (tester) async {
     await tester.runAsync(() async => repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath)));
     await pumpApp(tester, Scaffold(body: AddItemDialog(repository: repo, malClient: MalClient())));

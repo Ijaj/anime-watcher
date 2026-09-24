@@ -127,7 +127,31 @@ class LibraryEntry {
   final int episodeCount;
   final int watchedCount;
 
-  const LibraryEntry({required this.item, required this.episodeCount, required this.watchedCount});
+  /// When any episode of this item last had its progress saved.
+  final DateTime? lastWatchedAt;
+
+  const LibraryEntry({
+    required this.item,
+    required this.episodeCount,
+    required this.watchedCount,
+    this.lastWatchedAt,
+  });
 
   double get progress => episodeCount == 0 ? 0 : watchedCount / episodeCount;
+}
+
+/// Sidebar ordering.
+enum LibrarySort {
+  title,
+  recentlyWatched,
+  recentlyAdded;
+
+  String get label => switch (this) {
+        LibrarySort.title => 'Title',
+        LibrarySort.recentlyWatched => 'Recently watched',
+        LibrarySort.recentlyAdded => 'Recently added',
+      };
+
+  static LibrarySort fromName(String? name) =>
+      LibrarySort.values.firstWhere((s) => s.name == name, orElse: () => LibrarySort.title);
 }

@@ -41,6 +41,9 @@ class _HomePageState extends State<HomePage> {
   List<Episode> _episodes = [];
   int? _selectedId;
   bool _loaded = false;
+  LibrarySort _sort = LibrarySort.title;
+
+  static const _sortKey = 'library_sort';
 
   LibraryRepository get _repo => widget.repository;
 
@@ -80,6 +83,9 @@ class _HomePageState extends State<HomePage> {
     setWindowEffect(effect);
     _repo.addListener(_reload);
     _reload();
+    _repo.setting(_sortKey).then((v) {
+      if (mounted) setState(() => _sort = LibrarySort.fromName(v));
+    });
   }
 
   @override
@@ -107,6 +113,11 @@ class _HomePageState extends State<HomePage> {
   Future<void> _select(LibraryEntry entry) async {
     setState(() => _selectedId = entry.item.id);
     await _reload();
+  }
+
+  void _setSort(LibrarySort sort) {
+    setState(() => _sort = sort);
+    _repo.setSetting(_sortKey, sort.name);
   }
 
   Future<void> _addItem() async {
@@ -222,7 +233,13 @@ class _HomePageState extends State<HomePage> {
                           decoration: decoration,
                           clipBehavior: Clip.antiAlias,
                           child: _loaded
-                              ? LibrarySidebar(entries: _entries, selectedId: _selectedId, onSelected: _select)
+                              ? LibrarySidebar(
+                                  entries: _entries,
+                                  selectedId: _selectedId,
+                                  onSelected: _select,
+                                  sort: _sort,
+                                  onSortChanged: _setSort,
+                                )
                               : const Center(child: CircularProgressIndicator()),
                         ),
                       ),

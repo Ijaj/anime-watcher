@@ -68,6 +68,56 @@ void main() {
     expect(eps.map((e) => e.code), ['S01E01', 'S01E03', 'S01E04']);
   });
 
+  test('entries report when an item was last watched', () async {
+    final a = await repo.addItem(item('/a'), const [ScannedEpisode(season: 1, number: 1, path: '/a/1.mkv')]);
+    await repo.addItem(item('/b'), const [ScannedEpisode(season: 1, number: 1, path: '/b/1.mkv')]);
+    final ep = (await repo.episodes(a.id!)).single;
+    await repo.saveProgress(ep.id!, position: const Duration(minutes: 1), duration: const Duration(minutes: 24));
+
+    final entries = await repo.entries();
+    expect(entries.firstWhere((e) => e.item.rootPath == '/a').lastWatchedAt, isNotNull);
+    expect(entries.firstWhere((e) => e.item.rootPath == '/b').lastWatchedAt, isNull);
+  });
+
+  group('filterAndSort', () {
+    LibraryEntry entry(String title, {int added = 0, int? watched}) => LibraryEntry(
+          item: LibraryItem(
+              type: MediaType.anime,
+              title: title,
+              rootPath: '/$title',
+              addedAt: DateTime.fromMillisecondsSinceEpoch(added)),
+          episodeCount: 1,
+          watchedCount: 0,
+          lastWatchedAt: watched == null ? null : DateTime.fromMillisecondsSinceEpoch(watched),
+        );
+    final entries = [
+      entry('Kaguya-sama: Love Is War', added: 3, watched: 10),
+      entry('attack on titan', added: 1),
+      entry('Frieren', added: 2, watched: 20),
+    ];
+    List<String> titles(List<LibraryEntry> es) => [for (final e in es) e.item.title];
+
+    test('title sort is case-insensitive', () {
+      expect(
+          titles(LibraryRepository.filterAndSort(entries)), ['attack on titan', 'Frieren', 'Kaguya-sama: Love Is War']);
+    });
+    test('recently watched first, never-watched last by title', () {
+      expect(titles(LibraryRepository.filterAndSort(entries, sort: LibrarySort.recentlyWatched)),
+          ['Frieren', 'Kaguya-sama: Love Is War', 'attack on titan']);
+    });
+    test('recently added first', () {
+      expect(titles(LibraryRepository.filterAndSort(entries, sort: LibrarySort.recentlyAdded)),
+          ['Kaguya-sama: Love Is War', 'Frieren', 'attack on titan']);
+    });
+    test('query matches every word, ignoring case and punctuation', () {
+      expect(titles(LibraryRepository.filterAndSort(entries, query: 'KAGUYA sama war')), ['Kaguya-sama: Love Is War']);
+      expect(titles(LibraryRepository.filterAndSort(entries, query: 'kaguya-sama')), ['Kaguya-sama: Love Is War']);
+      expect(titles(LibraryRepository.filterAndSort(entries, query: 'titan')), ['attack on titan']);
+      expect(LibraryRepository.filterAndSort(entries, query: 'naruto'), isEmpty);
+      expect(LibraryRepository.filterAndSort(entries, query: '  '), hasLength(3));
+    });
+  });
+
   group('nextUp', () {
     Episode ep(int n, {bool done = false, int? touched, int pos = 0}) => Episode(
           id: n,

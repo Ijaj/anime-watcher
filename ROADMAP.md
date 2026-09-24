@@ -70,7 +70,8 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 ## Phase 6 — Quality of life ⬜
 
 - ⬜ "Continue watching" shelf on the home screen across all shows.
-- ⬜ Search / filter / sort in the sidebar.
+- ✅ Search / filter / sort in the sidebar (title filter; sort by title,
+  recently watched or recently added — the sort choice is remembered).
 - ⬜ Settings page (MAL client ID, default library folder, theme, player
   defaults like subtitle/audio language).
 - ⬜ Bulk import: pick a root folder and add every show folder inside it.
