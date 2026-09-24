@@ -61,6 +61,11 @@ class MalClient {
               receiveTimeout: const Duration(seconds: 15),
             ));
 
+  String get clientId => _dio.options.headers['X-MAL-Client-ID'] as String;
+
+  /// Switches the client ID used by later requests.
+  set clientId(String id) => _dio.options.headers['X-MAL-Client-ID'] = id;
+
   Future<List<MalSearchResult>> search(String query) async {
     var q = query.trim();
     // MAL rejects queries shorter than 3 characters and longer than 64.
@@ -86,7 +91,7 @@ class MalClient {
     } on DioException catch (e) {
       final status = e.response?.statusCode;
       if (status == 401 || status == 403) {
-        throw const MalException('MyAnimeList rejected the client ID. Check MAL_CLIENT_ID.');
+        throw const MalException('MyAnimeList rejected the client ID. Check it in Settings.');
       }
       if (status != null) throw MalException('MyAnimeList request failed (HTTP $status).');
       throw const MalException('Could not reach MyAnimeList. Check your internet connection.');

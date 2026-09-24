@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../config.dart';
+import '../models/continue_watching.dart';
 import '../models/episode.dart';
 import '../models/item.dart';
 
@@ -13,12 +14,58 @@ class DuplicateItemException implements Exception {
   String toString() => 'This folder is already in your library:\n$rootPath';
 }
 
+/// Outcome of [LibraryRepository.syncAll].
+class RescanSummary {
+  final int added;
+  final int removed;
+
+  /// Shows that gained or lost episodes.
+  final int changedShows;
+
+  /// Shows skipped because their folder could not be scanned.
+  final int unavailable;
+
+  const RescanSummary({this.added = 0, this.removed = 0, this.changedShows = 0, this.unavailable = 0});
+
+  bool get changed => added + removed > 0;
+
+  RescanSummary copyWith({int? added, int? removed, int? changedShows, int? unavailable}) => RescanSummary(
+        added: added ?? this.added,
+        removed: removed ?? this.removed,
+        changedShows: changedShows ?? this.changedShows,
+        unavailable: unavailable ?? this.unavailable,
+      );
+
+  /// e.g. "Library updated in 2 shows. New: 3 episodes, removed: 1 episode · 1 folder unavailable".
+  String describe() {
+    String plural(int n, String word) => '$n $word${n == 1 ? '' : 's'}';
+    final parts = [
+      if (added > 0) 'New: ${plural(added, 'episode')}',
+      if (removed > 0) 'removed: ${plural(removed, 'episode')}',
+    ];
+    final text = StringBuffer('Library updated in ${plural(changedShows, 'show')}. ${parts.join(', ')}');
+    if (unavailable > 0) text.write(' · ${plural(unavailable, 'folder')} unavailable');
+    return text.toString();
+  }
+}
+
 /// All reads and writes of library data. Notifies listeners whenever the
 /// library, episode list, or watched state changes.
 class LibraryRepository extends ChangeNotifier {
+  static const malClientIdKey = 'mal_client_id';
+  static const watchedThresholdKey = 'watched_threshold';
+  static const minWatchedThreshold = 0.5;
+
   final Database _db;
+  double _watchedThreshold = AppConfig.watchedThreshold;
 
   LibraryRepository(this._db);
+
+  /// Loads settings that are read synchronously ([watchedThreshold]).
+  Future<void> loadSettings() async {
+    final threshold = double.tryParse(await setting(watchedThresholdKey) ?? '');
+    _watchedThreshold = threshold == null ? AppConfig.watchedThreshold : _clampThreshold(threshold);
+  }
 
   Future<void> close() => _db.close();
 
@@ -29,7 +76,9 @@ class LibraryRepository extends ChangeNotifier {
       SELECT i.*,
         (SELECT COUNT(*) FROM episodes e WHERE e.item_id = i.id) AS episode_count,
         (SELECT COUNT(*) FROM episodes e JOIN watch_progress w ON w.episode_id = e.id
-           WHERE e.item_id = i.id AND w.completed = 1) AS watched_count
+           WHERE e.item_id = i.id AND w.completed = 1) AS watched_count,
+        (SELECT MAX(w.updated_at) FROM episodes e JOIN watch_progress w ON w.episode_id = e.id
+           WHERE e.item_id = i.id) AS last_watched
       FROM items i
       ORDER BY i.title COLLATE NOCASE''');
     return [
@@ -38,9 +87,42 @@ class LibraryRepository extends ChangeNotifier {
           item: LibraryItem.fromMap(r),
           episodeCount: r['episode_count'] as int,
           watchedCount: r['watched_count'] as int,
+          lastWatchedAt:
+              r['last_watched'] == null ? null : DateTime.fromMillisecondsSinceEpoch(r['last_watched'] as int),
         ),
     ];
   }
+
+  /// Entries whose title contains every word of [query] (case- and
+  /// punctuation-insensitive), ordered by [sort]. Ties, and never-watched
+  /// items when sorting by recently watched, fall back to title order.
+  static List<LibraryEntry> filterAndSort(List<LibraryEntry> entries,
+      {String query = '', LibrarySort sort = LibrarySort.title}) {
+    final words = _normalize(query).split(' ').where((w) => w.isNotEmpty).toList();
+    final result = [
+      for (final e in entries)
+        if (words.every(_normalize(e.item.title).contains)) e,
+    ];
+    int byTitle(LibraryEntry a, LibraryEntry b) => a.item.title.toLowerCase().compareTo(b.item.title.toLowerCase());
+    int newestFirst(DateTime? a, DateTime? b) {
+      if (a == b) return 0;
+      if (a == null) return 1;
+      if (b == null) return -1;
+      return b.compareTo(a);
+    }
+
+    result.sort((a, b) {
+      final c = switch (sort) {
+        LibrarySort.title => 0,
+        LibrarySort.recentlyWatched => newestFirst(a.lastWatchedAt, b.lastWatchedAt),
+        LibrarySort.recentlyAdded => newestFirst(a.item.addedAt, b.item.addedAt),
+      };
+      return c != 0 ? c : byTitle(a, b);
+    });
+    return result;
+  }
+
+  static String _normalize(String s) => s.toLowerCase().replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ');
 
   Future<LibraryItem?> item(int id) async {
     final rows = await _db.query('items', where: 'id = ?', whereArgs: [id]);
@@ -69,6 +151,11 @@ class LibraryRepository extends ChangeNotifier {
     return saved;
   }
 
+  /// Records where the item's cover was cached. Does not notify: the UI
+  /// already shows the network image and picks the file up on next reload.
+  Future<void> setCoverPath(int id, String? path) =>
+      _db.update('items', {'cover_path': path}, where: 'id = ?', whereArgs: [id]);
+
   Future<void> removeItem(int id) async {
     await _db.delete('items', where: 'id = ?', whereArgs: [id]);
     notifyListeners();
@@ -76,25 +163,89 @@ class LibraryRepository extends ChangeNotifier {
 
   // ------------------------------------------------------------- episodes
 
-  Future<List<Episode>> episodes(int itemId) async {
-    final rows = await _db.rawQuery('''
+  static const _episodeSelect = '''
       SELECT e.*, w.position_ms, w.duration_ms, w.completed, w.updated_at
-      FROM episodes e LEFT JOIN watch_progress w ON w.episode_id = e.id
-      WHERE e.item_id = ?
-      ORDER BY e.season = 0, e.season, e.number, e.path''', [itemId]);
+      FROM episodes e LEFT JOIN watch_progress w ON w.episode_id = e.id''';
+
+  /// Seasons in order with specials last, then episode number.
+  static const _episodeOrder = 'e.season = 0, e.season, e.number, e.path';
+
+  Future<List<Episode>> episodes(int itemId) async {
+    final rows = await _db.rawQuery('$_episodeSelect WHERE e.item_id = ? ORDER BY $_episodeOrder', [itemId]);
     return rows.map(Episode.fromMap).toList();
+  }
+
+  /// The next-up episode ([nextUp]) of every show with watch history, most
+  /// recently watched show first. Fully watched shows are left out.
+  Future<List<ContinueWatching>> continueWatching() async {
+    final started = (await entries()).where((e) => e.lastWatchedAt != null).toList()
+      ..sort((a, b) => b.lastWatchedAt!.compareTo(a.lastWatchedAt!));
+    if (started.isEmpty) return const [];
+    final ids = [for (final e in started) e.item.id!];
+    final rows = await _db.rawQuery(
+        '$_episodeSelect WHERE e.item_id IN (${List.filled(ids.length, '?').join(',')}) ORDER BY e.item_id, $_episodeOrder',
+        ids);
+    final byItem = <int, List<Episode>>{};
+    for (final r in rows) {
+      final episode = Episode.fromMap(r);
+      byItem.putIfAbsent(episode.itemId, () => []).add(episode);
+    }
+    return [
+      for (final entry in started)
+        if (nextUp(byItem[entry.item.id] ?? const []) case final next?) ContinueWatching(entry: entry, episode: next),
+    ];
   }
 
   /// Syncs the stored episodes of [itemId] with a fresh scan: new files are
   /// added, missing files are removed (with their progress), and moved
   /// season/episode numbers are updated. Returns (added, removed).
   Future<(int, int)> syncEpisodes(int itemId, List<ScannedEpisode> scanned) async {
-    final result = await _db.transaction((txn) async {
+    final (added, removed, _) = await _sync(itemId, scanned);
+    notifyListeners();
+    return (added, removed);
+  }
+
+  /// Syncs every library item with the episodes [scan] returns for it (see
+  /// [syncEpisodes]); when [scan] returns null the item is left untouched.
+  /// Listeners are notified once, at the end, and only if anything changed.
+  Future<RescanSummary> syncAll(Future<List<ScannedEpisode>?> Function(LibraryEntry entry) scan) async {
+    var summary = const RescanSummary();
+    var anyChange = false;
+    for (final entry in await entries()) {
+      final List<ScannedEpisode>? scanned;
+      try {
+        scanned = await scan(entry);
+      } catch (_) {
+        summary = summary.copyWith(unavailable: summary.unavailable + 1);
+        continue;
+      }
+      if (scanned == null) {
+        summary = summary.copyWith(unavailable: summary.unavailable + 1);
+        continue;
+      }
+      final (added, removed, renumbered) = await _sync(entry.item.id!, scanned);
+      anyChange |= added + removed + renumbered > 0;
+      if (added + removed > 0) {
+        summary = summary.copyWith(
+          added: summary.added + added,
+          removed: summary.removed + removed,
+          changedShows: summary.changedShows + 1,
+        );
+      }
+    }
+    if (anyChange) notifyListeners();
+    return summary;
+  }
+
+  /// Returns (added, removed, renumbered).
+  Future<(int, int, int)> _sync(int itemId, List<ScannedEpisode> scanned) {
+    return _db.transaction((txn) async {
       final existing = {
         for (final r in await txn.query('episodes', where: 'item_id = ?', whereArgs: [itemId])) r['path'] as String: r,
       };
       final seen = <String>{};
       var added = 0;
+      var renumbered = 0;
       final batch = txn.batch();
       for (final e in scanned) {
         seen.add(e.path);
@@ -104,6 +255,7 @@ class LibraryRepository extends ChangeNotifier {
           added++;
         } else if (row['season'] != e.season || row['number'] != e.number) {
           batch.update('episodes', {'season': e.season, 'number': e.number}, where: 'id = ?', whereArgs: [row['id']]);
+          renumbered++;
         }
       }
       final missing = existing.keys.where((path) => !seen.contains(path)).toList();
@@ -111,10 +263,8 @@ class LibraryRepository extends ChangeNotifier {
         batch.delete('episodes', where: 'id = ?', whereArgs: [existing[path]!['id']]);
       }
       await batch.commit(noResult: true);
-      return (added, missing.length);
+      return (added, missing.length, renumbered);
     });
-    notifyListeners();
-    return result;
   }
 
   Map<String, Object?> _episodeRow(int itemId, ScannedEpisode e) =>
@@ -126,7 +276,7 @@ class LibraryRepository extends ChangeNotifier {
   /// completed until [setWatched] clears it.
   Future<void> saveProgress(int episodeId, {required Duration position, required Duration duration}) async {
     final completed =
-        duration > Duration.zero && position.inMilliseconds >= duration.inMilliseconds * AppConfig.watchedThreshold;
+        duration > Duration.zero && position.inMilliseconds >= duration.inMilliseconds * _watchedThreshold;
     final before =
         await _db.query('watch_progress', columns: ['completed'], where: 'episode_id = ?', whereArgs: [episodeId]);
     await _db.rawInsert('''
@@ -187,7 +337,42 @@ class LibraryRepository extends ChangeNotifier {
     return null;
   }
 
+  /// Deletes all playback positions and watched flags.
+  Future<void> clearWatchHistory() async {
+    await _db.delete('watch_progress');
+    notifyListeners();
+  }
+
   // ------------------------------------------------------------- settings
+
+  /// Fraction of an episode that must be played for it to count as watched.
+  /// Changing it does not re-evaluate episodes that were already saved.
+  double get watchedThreshold => _watchedThreshold;
+
+  Future<void> setWatchedThreshold(double value) async {
+    _watchedThreshold = _clampThreshold(value);
+    await setSetting(watchedThresholdKey, _watchedThreshold.toString());
+  }
+
+  static double _clampThreshold(double v) => v.clamp(minWatchedThreshold, 1.0).toDouble();
+
+  /// The user's MyAnimeList client ID, or null to use [AppConfig.malClientId].
+  Future<String?> malClientIdOverride() async {
+    final id = (await setting(malClientIdKey))?.trim();
+    return id == null || id.isEmpty ? null : id;
+  }
+
+  Future<String> malClientId() async => await malClientIdOverride() ?? AppConfig.malClientId;
+
+  /// Stores a client ID override; null or blank restores the default.
+  Future<void> setMalClientId(String? id) async {
+    id = id?.trim();
+    if (id == null || id.isEmpty) {
+      await _db.delete('settings', where: 'key = ?', whereArgs: [malClientIdKey]);
+    } else {
+      await setSetting(malClientIdKey, id);
+    }
+  }
 
   Future<String?> setting(String key) async {
     final rows = await _db.query('settings', where: 'key = ?', whereArgs: [key]);

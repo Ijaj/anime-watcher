@@ -26,6 +26,9 @@ class LibraryItem {
   final String? synopsis;
   final String? imageMedium;
   final String? imageLarge;
+
+  /// Cached copy of the cover on disk, if it has been downloaded.
+  final String? coverPath;
   final bool airing;
   final int? totalEpisodes;
   final double? score;
@@ -41,6 +44,7 @@ class LibraryItem {
     this.synopsis,
     this.imageMedium,
     this.imageLarge,
+    this.coverPath,
     this.airing = false,
     this.totalEpisodes,
     this.score,
@@ -82,6 +86,7 @@ class LibraryItem {
         synopsis: m['synopsis'] as String?,
         imageMedium: m['image_medium'] as String?,
         imageLarge: m['image_large'] as String?,
+        coverPath: m['cover_path'] as String?,
         airing: (m['airing'] as int? ?? 0) == 1,
         totalEpisodes: m['total_episodes'] as int?,
         score: (m['score'] as num?)?.toDouble(),
@@ -98,13 +103,14 @@ class LibraryItem {
         'synopsis': synopsis,
         'image_medium': imageMedium,
         'image_large': imageLarge,
+        'cover_path': coverPath,
         'airing': airing ? 1 : 0,
         'total_episodes': totalEpisodes,
         'score': score,
         'added_at': addedAt.millisecondsSinceEpoch,
       };
 
-  LibraryItem copyWith({int? id}) => LibraryItem(
+  LibraryItem copyWith({int? id, String? coverPath}) => LibraryItem(
         id: id ?? this.id,
         malId: malId,
         type: type,
@@ -114,6 +120,7 @@ class LibraryItem {
         synopsis: synopsis,
         imageMedium: imageMedium,
         imageLarge: imageLarge,
+        coverPath: coverPath ?? this.coverPath,
         airing: airing,
         totalEpisodes: totalEpisodes,
         score: score,
@@ -127,7 +134,31 @@ class LibraryEntry {
   final int episodeCount;
   final int watchedCount;
 
-  const LibraryEntry({required this.item, required this.episodeCount, required this.watchedCount});
+  /// When any episode of this item last had its progress saved.
+  final DateTime? lastWatchedAt;
+
+  const LibraryEntry({
+    required this.item,
+    required this.episodeCount,
+    required this.watchedCount,
+    this.lastWatchedAt,
+  });
 
   double get progress => episodeCount == 0 ? 0 : watchedCount / episodeCount;
+}
+
+/// Sidebar ordering.
+enum LibrarySort {
+  title,
+  recentlyWatched,
+  recentlyAdded;
+
+  String get label => switch (this) {
+        LibrarySort.title => 'Title',
+        LibrarySort.recentlyWatched => 'Recently watched',
+        LibrarySort.recentlyAdded => 'Recently added',
+      };
+
+  static LibrarySort fromName(String? name) =>
+      LibrarySort.values.firstWhere((s) => s.name == name, orElse: () => LibrarySort.title);
 }

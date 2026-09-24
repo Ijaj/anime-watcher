@@ -8,7 +8,6 @@
 
 #include <bitsdojo_window_linux/bitsdojo_window_plugin.h>
 #include <flutter_acrylic/flutter_acrylic_plugin.h>
-#include <flutter_volume_controller/flutter_volume_controller_plugin.h>
 #include <media_kit_libs_linux/media_kit_libs_linux_plugin.h>
 #include <media_kit_video/media_kit_video_plugin.h>
 
@@ -19,9 +18,6 @@ void fl_register_plugins(FlPluginRegistry* registry) {
   g_autoptr(FlPluginRegistrar) flutter_acrylic_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "FlutterAcrylicPlugin");
   flutter_acrylic_plugin_register_with_registrar(flutter_acrylic_registrar);
-  g_autoptr(FlPluginRegistrar) flutter_volume_controller_registrar =
-      fl_plugin_registry_get_registrar_for_plugin(registry, "FlutterVolumeControllerPlugin");
-  flutter_volume_controller_plugin_register_with_registrar(flutter_volume_controller_registrar);
   g_autoptr(FlPluginRegistrar) media_kit_libs_linux_registrar =
       fl_plugin_registry_get_registrar_for_plugin(registry, "MediaKitLibsLinuxPlugin");
   media_kit_libs_linux_plugin_register_with_registrar(media_kit_libs_linux_registrar);

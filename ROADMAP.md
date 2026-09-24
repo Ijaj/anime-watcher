@@ -6,10 +6,12 @@ a built-in player, and remembers exactly where you left off.
 
 Status legend: ✅ done · 🚧 in progress · ⬜ not started
 
-> Phases 1–5 are implemented and covered by unit/widget tests
-> (`flutter test`), but have **not yet been tried in a running desktop build**
-> — video playback and the native folder picker need a manual check on
-> Windows/Linux.
+> Phases 1–6 are implemented and covered by unit/widget tests
+> (`flutter test`, run in CI), but have **not yet been tried in a running
+> desktop build**. Still needing a manual check on Windows/Linux: video
+> playback and the player shortcuts (media_kit), the native folder pickers
+> (single and bulk import), the acrylic window, real MyAnimeList requests
+> and cover downloads, and the startup rescan against real drives.
 
 ---
 
@@ -67,16 +69,33 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 - ✅ Auto-advance to the next episode; back button returns to library.
 - ✅ Manual "mark watched / unwatched" on episodes.
 
-## Phase 6 — Quality of life ⬜
+## Phase 6 — Quality of life 🚧
 
-- ⬜ "Continue watching" shelf on the home screen across all shows.
-- ⬜ Search / filter / sort in the sidebar.
-- ⬜ Settings page (MAL client ID, default library folder, theme, player
-  defaults like subtitle/audio language).
-- ⬜ Bulk import: pick a root folder and add every show folder inside it.
-- ⬜ Cache cover images locally for offline use.
-- ⬜ Detect new episodes on disk at startup (auto-rescan).
-- ⬜ Keyboard shortcuts in the player (space, arrows, F for fullscreen).
+- ✅ "Continue watching" shelf on the home screen across all shows: shown
+  when no show is selected (the new Home button in the title block), most
+  recently watched first; click a card to resume, ⓘ to open the show.
+- ✅ Search / filter / sort in the sidebar (title filter; sort by title,
+  recently watched or recently added — the sort choice is remembered).
+- 🚧 Settings page (gear button in the title block):
+  - ✅ MAL client ID (stored in `settings`, overrides the built-in /
+    `--dart-define` one), watched threshold (50–100 %), clear watch history.
+  - ⬜ Default library folder, theme, player defaults (subtitle/audio
+    language).
+- ✅ Bulk import: pick a parent folder; every sub-folder not already in the
+  library is scanned and matched on MAL (top result), then reviewed (keep,
+  change match, search again, add without metadata, or skip) and added.
+- ✅ Cache cover images locally for offline use (`<app-support>/covers/`,
+  schema v2 adds `items.cover_path`; downloaded after adding and at startup
+  for any item missing one; falls back to the network URL).
+- ✅ Detect new episodes on disk at startup (auto-rescan in the background;
+  missing folders — e.g. an unplugged drive — and folders that suddenly have
+  no videos are skipped so their history is kept; one summary snackbar if
+  anything changed).
+- ✅ Keyboard shortcuts in the player. media_kit's desktop controls already
+  handle space, J / I (±10 s), ← → (±2 s), ↑ ↓ (volume), F (fullscreen).
+  Added: N / P (and Shift+N / Shift+P, media next/previous keys) for the
+  next / previous episode, Esc to go back to the library (still leaves
+  fullscreen first).
 
 ## Phase 7 — Movies & TV series ⬜
 
@@ -87,9 +106,15 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 
 - ✅ Bump `win32` / `archive` in `pubspec.lock` — the previously locked
   versions do not compile on Dart ≥ 3.5.
-- ⬜ Remove unused dependencies (`play_video`, `json_theme` if unused).
+- ✅ Remove unused dependencies (`play_video`, `json_theme`, `toastification`,
+  `fullscreen_window`, `filesystem_picker`).
 - ⬜ Clear remaining lints, add widget tests.
-- ⬜ CI (analyze + test) via GitHub Actions.
+- ⬜ Toolchain floor: `pubspec.yaml` allows Dart ≥ 3.2.2 (Flutter 3.16), but
+  `sqflite_common_ffi ^2.3.3` needs Dart ≥ 3.3 (Flutter ≥ 3.19), so
+  `pub get` fails on 3.16. The code itself analyzes and passes all tests on
+  3.16.9 when that constraint is loosened to `>=2.3.0 <2.3.3`; decide
+  whether to lower the constraint or raise the SDK floor.
+- ✅ CI (format + analyze + test) via GitHub Actions on ubuntu-latest.
 - ⬜ Windows installer (MSIX) and Linux bundle; app icon.
 
 ---

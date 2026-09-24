@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:anime_watcher/data/app_database.dart';
 import 'package:anime_watcher/data/library_repository.dart';
 import 'package:anime_watcher/pages/home.dart';
+import 'package:anime_watcher/services/cover_cache.dart';
 import 'package:anime_watcher/services/mal_client.dart';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
@@ -18,8 +19,10 @@ void main() async {
 
   await Window.initialize();
   final repository = LibraryRepository(await AppDatabase.open());
+  await repository.loadSettings();
+  final malClient = MalClient(clientId: await repository.malClientId());
 
-  runApp(MyApp(repository: repository, malClient: MalClient()));
+  runApp(MyApp(repository: repository, malClient: malClient, coverCache: await CoverCache.open()));
   if (Platform.isWindows) {
     doWhenWindowReady(() {
       appWindow
@@ -34,8 +37,9 @@ void main() async {
 class MyApp extends StatelessWidget {
   final LibraryRepository repository;
   final MalClient malClient;
+  final CoverCache coverCache;
 
-  const MyApp({super.key, required this.repository, required this.malClient});
+  const MyApp({super.key, required this.repository, required this.malClient, required this.coverCache});
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +61,7 @@ class MyApp extends StatelessWidget {
         ),
         // The acrylic window effect is always dark, so match it.
         themeMode: ThemeMode.dark,
-        home: HomePage(repository: repository, malClient: malClient),
+        home: HomePage(repository: repository, malClient: malClient, coverCache: coverCache),
         debugShowCheckedModeBanner: false,
       ),
     );
