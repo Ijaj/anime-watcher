@@ -6,10 +6,10 @@ enum MediaType {
   series;
 
   String get label => switch (this) {
-        MediaType.anime => 'Anime',
-        MediaType.movie => 'Movie',
-        MediaType.series => 'TV Series',
-      };
+    MediaType.anime => 'Anime',
+    MediaType.movie => 'Movie',
+    MediaType.series => 'TV Series',
+  };
 
   static MediaType fromName(String name) =>
       MediaType.values.firstWhere((t) => t.name == name, orElse: () => MediaType.anime);
@@ -52,11 +52,7 @@ class LibraryItem {
   }) : addedAt = addedAt ?? DateTime.now();
 
   /// Builds an item from a MyAnimeList `GET /anime/{id}` response.
-  factory LibraryItem.fromMal(
-    Map<String, dynamic> r, {
-    required String rootPath,
-    MediaType type = MediaType.anime,
-  }) {
+  factory LibraryItem.fromMal(Map<String, dynamic> r, {required String rootPath, MediaType type = MediaType.anime}) {
     final picture = r['main_picture'] as Map<String, dynamic>?;
     final numEpisodes = r['num_episodes'] as int?;
     return LibraryItem(
@@ -64,9 +60,7 @@ class LibraryItem {
       type: type,
       title: r['title'] as String,
       rootPath: rootPath,
-      genres: [
-        for (final g in (r['genres'] as List<dynamic>? ?? const [])) g['name'] as String,
-      ],
+      genres: [for (final g in (r['genres'] as List<dynamic>? ?? const [])) g['name'] as String],
       synopsis: r['synopsis'] as String?,
       imageMedium: picture?['medium'] as String?,
       imageLarge: picture?['large'] as String?,
@@ -77,55 +71,55 @@ class LibraryItem {
   }
 
   factory LibraryItem.fromMap(Map<String, Object?> m) => LibraryItem(
-        id: m['id'] as int?,
-        malId: m['mal_id'] as int?,
-        type: MediaType.fromName(m['type'] as String),
-        title: m['title'] as String,
-        rootPath: m['root_path'] as String,
-        genres: (jsonDecode(m['genres'] as String? ?? '[]') as List<dynamic>).cast<String>(),
-        synopsis: m['synopsis'] as String?,
-        imageMedium: m['image_medium'] as String?,
-        imageLarge: m['image_large'] as String?,
-        coverPath: m['cover_path'] as String?,
-        airing: (m['airing'] as int? ?? 0) == 1,
-        totalEpisodes: m['total_episodes'] as int?,
-        score: (m['score'] as num?)?.toDouble(),
-        addedAt: DateTime.fromMillisecondsSinceEpoch(m['added_at'] as int),
-      );
+    id: m['id'] as int?,
+    malId: m['mal_id'] as int?,
+    type: MediaType.fromName(m['type'] as String),
+    title: m['title'] as String,
+    rootPath: m['root_path'] as String,
+    genres: (jsonDecode(m['genres'] as String? ?? '[]') as List<dynamic>).cast<String>(),
+    synopsis: m['synopsis'] as String?,
+    imageMedium: m['image_medium'] as String?,
+    imageLarge: m['image_large'] as String?,
+    coverPath: m['cover_path'] as String?,
+    airing: (m['airing'] as int? ?? 0) == 1,
+    totalEpisodes: m['total_episodes'] as int?,
+    score: (m['score'] as num?)?.toDouble(),
+    addedAt: DateTime.fromMillisecondsSinceEpoch(m['added_at'] as int),
+  );
 
   Map<String, Object?> toMap() => {
-        if (id != null) 'id': id,
-        'mal_id': malId,
-        'type': type.name,
-        'title': title,
-        'root_path': rootPath,
-        'genres': jsonEncode(genres),
-        'synopsis': synopsis,
-        'image_medium': imageMedium,
-        'image_large': imageLarge,
-        'cover_path': coverPath,
-        'airing': airing ? 1 : 0,
-        'total_episodes': totalEpisodes,
-        'score': score,
-        'added_at': addedAt.millisecondsSinceEpoch,
-      };
+    if (id != null) 'id': id,
+    'mal_id': malId,
+    'type': type.name,
+    'title': title,
+    'root_path': rootPath,
+    'genres': jsonEncode(genres),
+    'synopsis': synopsis,
+    'image_medium': imageMedium,
+    'image_large': imageLarge,
+    'cover_path': coverPath,
+    'airing': airing ? 1 : 0,
+    'total_episodes': totalEpisodes,
+    'score': score,
+    'added_at': addedAt.millisecondsSinceEpoch,
+  };
 
   LibraryItem copyWith({int? id, String? coverPath}) => LibraryItem(
-        id: id ?? this.id,
-        malId: malId,
-        type: type,
-        title: title,
-        rootPath: rootPath,
-        genres: genres,
-        synopsis: synopsis,
-        imageMedium: imageMedium,
-        imageLarge: imageLarge,
-        coverPath: coverPath ?? this.coverPath,
-        airing: airing,
-        totalEpisodes: totalEpisodes,
-        score: score,
-        addedAt: addedAt,
-      );
+    id: id ?? this.id,
+    malId: malId,
+    type: type,
+    title: title,
+    rootPath: rootPath,
+    genres: genres,
+    synopsis: synopsis,
+    imageMedium: imageMedium,
+    imageLarge: imageLarge,
+    coverPath: coverPath ?? this.coverPath,
+    airing: airing,
+    totalEpisodes: totalEpisodes,
+    score: score,
+    addedAt: addedAt,
+  );
 }
 
 /// A library item together with its on-disk episode and watched counts.
@@ -137,12 +131,7 @@ class LibraryEntry {
   /// When any episode of this item last had its progress saved.
   final DateTime? lastWatchedAt;
 
-  const LibraryEntry({
-    required this.item,
-    required this.episodeCount,
-    required this.watchedCount,
-    this.lastWatchedAt,
-  });
+  const LibraryEntry({required this.item, required this.episodeCount, required this.watchedCount, this.lastWatchedAt});
 
   double get progress => episodeCount == 0 ? 0 : watchedCount / episodeCount;
 }
@@ -154,10 +143,10 @@ enum LibrarySort {
   recentlyAdded;
 
   String get label => switch (this) {
-        LibrarySort.title => 'Title',
-        LibrarySort.recentlyWatched => 'Recently watched',
-        LibrarySort.recentlyAdded => 'Recently added',
-      };
+    LibrarySort.title => 'Title',
+    LibrarySort.recentlyWatched => 'Recently watched',
+    LibrarySort.recentlyAdded => 'Recently added',
+  };
 
   static LibrarySort fromName(String? name) =>
       LibrarySort.values.firstWhere((s) => s.name == name, orElse: () => LibrarySort.title);

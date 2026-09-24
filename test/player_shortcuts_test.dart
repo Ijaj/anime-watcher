@@ -5,17 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final calls = <String>[];
-  final shortcuts = playerShortcuts(PlayerShortcutActions(
-    play: () => calls.add('play'),
-    pause: () => calls.add('pause'),
-    playOrPause: () => calls.add('playOrPause'),
-    seekBy: (d) => calls.add('seek ${d.inSeconds}'),
-    changeVolume: (v) => calls.add('volume ${v.round()}'),
-    toggleFullscreen: () => calls.add('fullscreen'),
-    escape: () => calls.add('escape'),
-    nextEpisode: () => calls.add('next'),
-    previousEpisode: () => calls.add('previous'),
-  ));
+  final shortcuts = playerShortcuts(
+    PlayerShortcutActions(
+      play: () => calls.add('play'),
+      pause: () => calls.add('pause'),
+      playOrPause: () => calls.add('playOrPause'),
+      seekBy: (d) => calls.add('seek ${d.inSeconds}'),
+      changeVolume: (v) => calls.add('volume ${v.round()}'),
+      toggleFullscreen: () => calls.add('fullscreen'),
+      escape: () => calls.add('escape'),
+      nextEpisode: () => calls.add('next'),
+      previousEpisode: () => calls.add('previous'),
+    ),
+  );
 
   setUp(calls.clear);
 
@@ -55,10 +57,12 @@ void main() {
   });
 
   testWidgets('key events reach the actions through CallbackShortcuts', (tester) async {
-    await tester.pumpWidget(CallbackShortcuts(
-      bindings: shortcuts,
-      child: const Focus(autofocus: true, child: SizedBox()),
-    ));
+    await tester.pumpWidget(
+      CallbackShortcuts(
+        bindings: shortcuts,
+        child: const Focus(autofocus: true, child: SizedBox()),
+      ),
+    );
     calls.clear();
     await tester.sendKeyEvent(LogicalKeyboardKey.keyN);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);

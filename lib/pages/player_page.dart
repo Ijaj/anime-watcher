@@ -85,8 +85,9 @@ class _PlayerPageState extends State<PlayerPage> {
     setState(() {
       _index = index;
       _error = null;
-      _pendingSeek =
-          progress != null && !progress.completed && progress.position > _minResume ? progress.position : null;
+      _pendingSeek = progress != null && !progress.completed && progress.position > _minResume
+          ? progress.position
+          : null;
     });
     try {
       // open() stops the previous file first, resetting position/duration.
@@ -135,35 +136,37 @@ class _PlayerPageState extends State<PlayerPage> {
   /// [videoContext] is inside the controls, so it knows whether the video is
   /// fullscreen (fullscreen is a separate route that rebuilds the controls).
   PlayerShortcutActions _shortcutActions(BuildContext videoContext) => PlayerShortcutActions(
-        play: _player.play,
-        pause: _player.pause,
-        playOrPause: _player.playOrPause,
-        seekBy: (offset) => _player.seek(_player.state.position + offset),
-        changeVolume: (delta) => _player.setVolume((_player.state.volume + delta).clamp(0.0, 100.0)),
-        toggleFullscreen: () => toggleFullscreen(videoContext),
-        escape: () {
-          if (isFullscreen(videoContext)) {
-            exitFullscreen(videoContext);
-          } else {
-            Navigator.of(context).maybePop();
-          }
-        },
-        nextEpisode: () {
-          if (_hasNext) _open(_index + 1);
-        },
-        previousEpisode: () {
-          if (_hasPrev) _open(_index - 1);
-        },
-      );
+    play: _player.play,
+    pause: _player.pause,
+    playOrPause: _player.playOrPause,
+    seekBy: (offset) => _player.seek(_player.state.position + offset),
+    changeVolume: (delta) => _player.setVolume((_player.state.volume + delta).clamp(0.0, 100.0)),
+    toggleFullscreen: () => toggleFullscreen(videoContext),
+    escape: () {
+      if (isFullscreen(videoContext)) {
+        exitFullscreen(videoContext);
+      } else {
+        Navigator.of(context).maybePop();
+      }
+    },
+    nextEpisode: () {
+      if (_hasNext) _open(_index + 1);
+    },
+    previousEpisode: () {
+      if (_hasPrev) _open(_index - 1);
+    },
+  );
 
-  Widget _controls(VideoState state) => Builder(builder: (videoContext) {
-        final shortcuts = playerShortcuts(_shortcutActions(videoContext));
-        return MaterialDesktopVideoControlsTheme(
-          normal: kDefaultMaterialDesktopVideoControlsThemeData.copyWith(keyboardShortcuts: shortcuts),
-          fullscreen: kDefaultMaterialDesktopVideoControlsThemeDataFullscreen.copyWith(keyboardShortcuts: shortcuts),
-          child: MaterialDesktopVideoControls(state),
-        );
-      });
+  Widget _controls(VideoState state) => Builder(
+    builder: (videoContext) {
+      final shortcuts = playerShortcuts(_shortcutActions(videoContext));
+      return MaterialDesktopVideoControlsTheme(
+        normal: kDefaultMaterialDesktopVideoControlsThemeData.copyWith(keyboardShortcuts: shortcuts),
+        fullscreen: kDefaultMaterialDesktopVideoControlsThemeDataFullscreen.copyWith(keyboardShortcuts: shortcuts),
+        child: MaterialDesktopVideoControls(state),
+      );
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -177,49 +180,55 @@ class _PlayerPageState extends State<PlayerPage> {
             color: Colors.black,
             child: SizedBox(
               height: 48,
-              child: Row(children: [
-                const BackButton(color: Colors.white),
-                Expanded(
-                  child: Text(
-                    '${widget.item.title}  ·  ${_episode.code}  ·  ${_episode.fileName}',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white),
+              child: Row(
+                children: [
+                  const BackButton(color: Colors.white),
+                  Expanded(
+                    child: Text(
+                      '${widget.item.title}  ·  ${_episode.code}  ·  ${_episode.fileName}',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white),
+                    ),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Previous episode (P)',
-                  color: Colors.white,
-                  onPressed: hasPrev ? () => _open(_index - 1) : null,
-                  icon: const Icon(Icons.skip_previous),
-                ),
-                IconButton(
-                  tooltip: 'Next episode (N)',
-                  color: Colors.white,
-                  onPressed: hasNext ? () => _open(_index + 1) : null,
-                  icon: const Icon(Icons.skip_next),
-                ),
-                const SizedBox(width: 8),
-              ]),
+                  IconButton(
+                    tooltip: 'Previous episode (P)',
+                    color: Colors.white,
+                    onPressed: hasPrev ? () => _open(_index - 1) : null,
+                    icon: const Icon(Icons.skip_previous),
+                  ),
+                  IconButton(
+                    tooltip: 'Next episode (N)',
+                    color: Colors.white,
+                    onPressed: hasNext ? () => _open(_index + 1) : null,
+                    icon: const Icon(Icons.skip_next),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
             ),
           ),
           Expanded(
-            child: Stack(children: [
-              Positioned.fill(child: Video(controller: _controller, controls: _controls)),
-              if (_error != null)
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  top: 16,
-                  child: Material(
-                    color: Colors.red.shade900,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(_error!, style: const TextStyle(color: Colors.white)),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Video(controller: _controller, controls: _controls),
+                ),
+                if (_error != null)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    child: Material(
+                      color: Colors.red.shade900,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(_error!, style: const TextStyle(color: Colors.white)),
+                      ),
                     ),
                   ),
-                ),
-            ]),
+              ],
+            ),
           ),
         ],
       ),

@@ -42,11 +42,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-enum InterfaceBrightness {
-  light,
-  dark,
-  auto,
-}
+enum InterfaceBrightness { light, dark, auto }
 
 class _HomePageState extends State<HomePage> {
   static const double titleHeight = 150;
@@ -84,11 +80,7 @@ class _HomePageState extends State<HomePage> {
   InterfaceBrightness brightness = Platform.isMacOS ? InterfaceBrightness.auto : InterfaceBrightness.dark;
 
   void setWindowEffect(WindowEffect value) {
-    Window.setEffect(
-      effect: value,
-      color: color,
-      dark: brightness == InterfaceBrightness.dark,
-    );
+    Window.setEffect(effect: value, color: color, dark: brightness == InterfaceBrightness.dark);
     if (Platform.isMacOS && brightness != InterfaceBrightness.auto) {
       Window.overrideMacOSBrightness(dark: brightness == InterfaceBrightness.dark);
     }
@@ -172,9 +164,11 @@ class _HomePageState extends State<HomePage> {
     _toast('Added ${result.added} ${result.added == 1 ? 'show' : 'shows'}$failed', error: result.failures.isNotEmpty);
   }
 
-  Future<void> _openSettings() => Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => SettingsPage(repository: _repo, malClient: widget.malClient),
-      ));
+  Future<void> _openSettings() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => SettingsPage(repository: _repo, malClient: widget.malClient),
+    ),
+  );
 
   Future<void> _play(Episode episode) async {
     final entry = _selected;
@@ -192,14 +186,11 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => PlayerPage(
-        repository: _repo,
-        item: item,
-        playlist: playlist,
-        startIndex: index,
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlayerPage(repository: _repo, item: item, playlist: playlist, startIndex: index),
       ),
-    ));
+    );
     // Positions are saved without notifying, so refresh on return.
     await _reload();
   }
@@ -221,8 +212,10 @@ class _HomePageState extends State<HomePage> {
           context: context,
           builder: (ctx) => AlertDialog(
             title: Text('Remove ${item.title}?'),
-            content: const Text('This removes it and its watch history from the library. '
-                'Files on disk are not touched.'),
+            content: const Text(
+              'This removes it and its watch history from the library. '
+              'Files on disk are not touched.',
+            ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
               FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
@@ -238,10 +231,9 @@ class _HomePageState extends State<HomePage> {
 
   void _toast(String message, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: error ? Theme.of(context).colorScheme.error : null,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: error ? Theme.of(context).colorScheme.error : null),
+    );
   }
 
   @override
@@ -259,10 +251,7 @@ class _HomePageState extends State<HomePage> {
         child: const Icon(Icons.add),
       ),
       body: Container(
-        decoration: const BoxDecoration(
-          color: Colors.black,
-          backgroundBlendMode: BlendMode.clear,
-        ),
+        decoration: const BoxDecoration(color: Colors.black, backgroundBlendMode: BlendMode.clear),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 100.0, sigmaY: 100.0, tileMode: TileMode.mirror),
           child: Row(
@@ -278,38 +267,45 @@ class _HomePageState extends State<HomePage> {
                         height: titleHeight,
                         width: double.infinity,
                         decoration: decoration,
-                        child: Column(children: [
-                          const Expanded(
-                            child: Center(
-                              child: FittedBox(
-                                child:
-                                    Text('ANIME WATCHER', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700)),
+                        child: Column(
+                          children: [
+                            const Expanded(
+                              child: Center(
+                                child: FittedBox(
+                                  child: Text(
+                                    'ANIME WATCHER',
+                                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              IconButton(
-                                tooltip: 'Home',
-                                isSelected: selected == null,
-                                onPressed: () => _select(null),
-                                icon: const Icon(Icons.home_outlined),
-                                selectedIcon: const Icon(Icons.home),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Home',
+                                    isSelected: selected == null,
+                                    onPressed: () => _select(null),
+                                    icon: const Icon(Icons.home_outlined),
+                                    selectedIcon: const Icon(Icons.home),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Import a folder of shows',
+                                    onPressed: _bulkImport,
+                                    icon: const Icon(Icons.drive_folder_upload_outlined),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Settings',
+                                    onPressed: _openSettings,
+                                    icon: const Icon(Icons.settings_outlined),
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                tooltip: 'Import a folder of shows',
-                                onPressed: _bulkImport,
-                                icon: const Icon(Icons.drive_folder_upload_outlined),
-                              ),
-                              IconButton(
-                                tooltip: 'Settings',
-                                onPressed: _openSettings,
-                                icon: const Icon(Icons.settings_outlined),
-                              ),
-                            ]),
-                          ),
-                        ]),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     Expanded(
@@ -344,12 +340,12 @@ class _HomePageState extends State<HomePage> {
                           child: !_loaded
                               ? const SizedBox.shrink()
                               : _entries.isEmpty
-                                  ? const Center(child: Text('Click + to add a show folder.'))
-                                  : ContinueWatchingShelf(
-                                      items: _continue,
-                                      onPlay: _playContinue,
-                                      onOpenShow: (c) => _select(c.entry.item.id),
-                                    ),
+                              ? const Center(child: Text('Click + to add a show folder.'))
+                              : ContinueWatchingShelf(
+                                  items: _continue,
+                                  onPlay: _playContinue,
+                                  onOpenShow: (c) => _select(c.entry.item.id),
+                                ),
                         ),
                       )
                     : Column(

@@ -25,11 +25,7 @@ void main() async {
   runApp(MyApp(repository: repository, malClient: malClient, coverCache: await CoverCache.open()));
   if (Platform.isWindows) {
     await windowManager.ensureInitialized();
-    const windowOptions = WindowOptions(
-      size: Size(1333, 768),
-      minimumSize: Size(1333, 768),
-      center: true,
-    );
+    const windowOptions = WindowOptions(size: Size(1333, 768), minimumSize: Size(1333, 768), center: true);
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
     });
@@ -46,21 +42,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shortcuts(
-      shortcuts: <LogicalKeySet, Intent>{
-        LogicalKeySet(LogicalKeyboardKey.select): const ActivateIntent(),
-      },
+      shortcuts: <LogicalKeySet, Intent>{LogicalKeySet(LogicalKeyboardKey.select): const ActivateIntent()},
       child: MaterialApp(
         title: 'Anime Watcher',
-        theme: ThemeData(
-          colorSchemeSeed: const Color(0x00006c7b),
-          brightness: Brightness.light,
-          useMaterial3: true,
-        ),
-        darkTheme: ThemeData(
-          colorSchemeSeed: const Color(0x00006c7b),
-          brightness: Brightness.dark,
-          useMaterial3: true,
-        ),
+        theme: ThemeData(colorSchemeSeed: const Color(0x00006c7b), brightness: Brightness.light, useMaterial3: true),
+        darkTheme: ThemeData(colorSchemeSeed: const Color(0x00006c7b), brightness: Brightness.dark, useMaterial3: true),
         // The acrylic window effect is always dark, so match it.
         themeMode: ThemeMode.dark,
         home: HomePage(repository: repository, malClient: malClient, coverCache: coverCache),

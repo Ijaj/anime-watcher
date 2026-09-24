@@ -93,9 +93,12 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
   Future<void> _addAll() async {
     final chosen = _candidates!.where((c) => c.include).length;
     setState(() => _progress = (0, chosen, 'Adding…'));
-    final result = await _importer.addAll(_candidates!, onProgress: (done) {
-      if (mounted) setState(() => _progress = (done, chosen, 'Adding…'));
-    });
+    final result = await _importer.addAll(
+      _candidates!,
+      onProgress: (done) {
+        if (mounted) setState(() => _progress = (done, chosen, 'Adding…'));
+      },
+    );
     if (mounted) Navigator.of(context).pop(result);
   }
 
@@ -131,30 +134,34 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
             children: [
               Text('Import a Folder of Shows', style: theme.textTheme.headlineSmall),
               const SizedBox(height: 4),
-              const Text('Every sub-folder is treated as one show and matched on MyAnimeList. '
-                  'Review the matches before adding.'),
+              const Text(
+                'Every sub-folder is treated as one show and matched on MyAnimeList. '
+                'Review the matches before adding.',
+              ),
               const SizedBox(height: 16),
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: _pathController,
-                    enabled: !_busy,
-                    onSubmitted: (_) => _scan(),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Parent folder',
-                      hintText: 'Paste a path and press Enter, or Browse',
-                      isDense: true,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _pathController,
+                      enabled: !_busy,
+                      onSubmitted: (_) => _scan(),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Parent folder',
+                        hintText: 'Paste a path and press Enter, or Browse',
+                        isDense: true,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _busy ? null : _browse,
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('Browse…'),
-                ),
-              ]),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _browse,
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('Browse…'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               if (progress != null) ...[
                 Text(progress.$2 == 0 ? progress.$3 : '${progress.$3} ${progress.$1} / ${progress.$2}'),
@@ -164,8 +171,10 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
                 Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
               if (candidates != null && candidates.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text('${candidates.length} new folders'
-                    '${_skippedExisting > 0 ? ' · $_skippedExisting already in library (skipped)' : ''}'),
+                Text(
+                  '${candidates.length} new folders'
+                  '${_skippedExisting > 0 ? ' · $_skippedExisting already in library (skipped)' : ''}',
+                ),
                 const SizedBox(height: 8),
                 Flexible(
                   child: Material(
@@ -185,18 +194,21 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
                 ),
               ],
               const SizedBox(height: 16),
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                TextButton(
-                  onPressed: _busy && candidates != null ? null : () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _busy || chosen == 0 ? null : _addAll,
-                  icon: const Icon(Icons.library_add),
-                  label: Text('Add $chosen ${chosen == 1 ? 'Show' : 'Shows'}'),
-                ),
-              ]),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: _busy && candidates != null ? null : () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _busy || chosen == 0 ? null : _addAll,
+                    icon: const Icon(Icons.library_add),
+                    label: Text('Add $chosen ${chosen == 1 ? 'Show' : 'Shows'}'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -211,8 +223,12 @@ class _CandidateRow extends StatelessWidget {
   final VoidCallback onChanged;
   final VoidCallback onSearch;
 
-  const _CandidateRow(
-      {required this.candidate, required this.enabled, required this.onChanged, required this.onSearch});
+  const _CandidateRow({
+    required this.candidate,
+    required this.enabled,
+    required this.onChanged,
+    required this.onSearch,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -221,56 +237,64 @@ class _CandidateRow extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(children: [
-        Checkbox(
-          value: c.include,
-          onChanged: enabled && hasVideos
-              ? (v) {
-                  c.include = v ?? false;
-                  onChanged();
-                }
-              : null,
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 280,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(c.folderName, maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(
-              [if (hasVideos) '${c.episodes.length} video files', if (c.error != null) c.error!].join(' · '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(color: c.error != null ? theme.colorScheme.error : null),
-            ),
-          ]),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: DropdownButton<int>(
-            isExpanded: true,
-            value: c.match?.id ?? -1,
+      child: Row(
+        children: [
+          Checkbox(
+            value: c.include,
             onChanged: enabled && hasVideos
-                ? (id) {
-                    c.match = id == -1 ? null : c.matches.firstWhere((m) => m.id == id);
+                ? (v) {
+                    c.include = v ?? false;
                     onChanged();
                   }
                 : null,
-            items: [
-              for (final m in c.matches)
-                DropdownMenuItem(value: m.id, child: Text(m.label, maxLines: 1, overflow: TextOverflow.ellipsis)),
-              DropdownMenuItem(
-                value: -1,
-                child: Text('No metadata — add as "${c.folderTitle}"', maxLines: 1, overflow: TextOverflow.ellipsis),
-              ),
-            ],
           ),
-        ),
-        IconButton(
-          tooltip: 'Search MyAnimeList',
-          onPressed: enabled && hasVideos ? onSearch : null,
-          icon: const Icon(Icons.search),
-        ),
-      ]),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 280,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(c.folderName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  [if (hasVideos) '${c.episodes.length} video files', if (c.error != null) c.error!].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: c.error != null ? theme.colorScheme.error : null),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: DropdownButton<int>(
+              isExpanded: true,
+              value: c.match?.id ?? -1,
+              onChanged: enabled && hasVideos
+                  ? (id) {
+                      c.match = id == -1 ? null : c.matches.firstWhere((m) => m.id == id);
+                      onChanged();
+                    }
+                  : null,
+              items: [
+                for (final m in c.matches)
+                  DropdownMenuItem(
+                    value: m.id,
+                    child: Text(m.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                DropdownMenuItem(
+                  value: -1,
+                  child: Text('No metadata — add as "${c.folderTitle}"', maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'Search MyAnimeList',
+            onPressed: enabled && hasVideos ? onSearch : null,
+            icon: const Icon(Icons.search),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -321,26 +345,30 @@ class _MatchSearchDialogState extends State<_MatchSearchDialog> {
       content: SizedBox(
         width: 500,
         height: 400,
-        child: Column(children: [
-          TextField(
-            controller: _controller,
-            autofocus: true,
-            onSubmitted: (_) => _search(),
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              isDense: true,
-              suffixIcon: IconButton(onPressed: _busy ? null : _search, icon: const Icon(Icons.search)),
+        child: Column(
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              onSubmitted: (_) => _search(),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                isDense: true,
+                suffixIcon: IconButton(onPressed: _busy ? null : _search, icon: const Icon(Icons.search)),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          if (_busy) const LinearProgressIndicator(),
-          if (_error != null) Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          Expanded(
-            child: ListView(children: [
-              for (final r in _results) ListTile(title: Text(r.label), onTap: () => Navigator.of(context).pop(r)),
-            ]),
-          ),
-        ]),
+            const SizedBox(height: 8),
+            if (_busy) const LinearProgressIndicator(),
+            if (_error != null) Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final r in _results) ListTile(title: Text(r.label), onTap: () => Navigator.of(context).pop(r)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'))],
     );

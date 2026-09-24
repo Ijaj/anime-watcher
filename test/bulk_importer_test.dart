@@ -98,8 +98,10 @@ void main() {
     expect(entries.first.item.genres, ['Action']);
     expect(entries.first.episodeCount, 1);
 
-    final offline =
-        await BulkImporter(repo, FakeMalClient(mal.results, failDetails: true)).prepare(await show('Frieren Again'));
+    final offline = await BulkImporter(
+      repo,
+      FakeMalClient(mal.results, failDetails: true),
+    ).prepare(await show('Frieren Again'));
     final second = await BulkImporter(repo, FakeMalClient(mal.results, failDetails: true)).addAll([offline, frieren]);
     expect(second.added, 1);
     expect(second.failures.single, contains('already in the library'));

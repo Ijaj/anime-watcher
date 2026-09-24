@@ -42,24 +42,24 @@ class PlayerShortcutActions {
 ///   single file here, so they did nothing.)
 /// - Esc: go back to the library. It still leaves fullscreen first.
 Map<ShortcutActivator, VoidCallback> playerShortcuts(PlayerShortcutActions a) => {
-      // media_kit_video defaults.
-      const SingleActivator(LogicalKeyboardKey.mediaPlay): a.play,
-      const SingleActivator(LogicalKeyboardKey.mediaPause): a.pause,
-      const SingleActivator(LogicalKeyboardKey.mediaPlayPause): a.playOrPause,
-      const SingleActivator(LogicalKeyboardKey.space): a.playOrPause,
-      const SingleActivator(LogicalKeyboardKey.keyJ): () => a.seekBy(const Duration(seconds: -10)),
-      const SingleActivator(LogicalKeyboardKey.keyI): () => a.seekBy(const Duration(seconds: 10)),
-      const SingleActivator(LogicalKeyboardKey.arrowLeft): () => a.seekBy(const Duration(seconds: -2)),
-      const SingleActivator(LogicalKeyboardKey.arrowRight): () => a.seekBy(const Duration(seconds: 2)),
-      const SingleActivator(LogicalKeyboardKey.arrowUp): () => a.changeVolume(5),
-      const SingleActivator(LogicalKeyboardKey.arrowDown): () => a.changeVolume(-5),
-      const SingleActivator(LogicalKeyboardKey.keyF): a.toggleFullscreen,
-      // Added.
-      const SingleActivator(LogicalKeyboardKey.escape): a.escape,
-      const SingleActivator(LogicalKeyboardKey.mediaTrackNext): a.nextEpisode,
-      const SingleActivator(LogicalKeyboardKey.keyN): a.nextEpisode,
-      const SingleActivator(LogicalKeyboardKey.keyN, shift: true): a.nextEpisode,
-      const SingleActivator(LogicalKeyboardKey.mediaTrackPrevious): a.previousEpisode,
-      const SingleActivator(LogicalKeyboardKey.keyP): a.previousEpisode,
-      const SingleActivator(LogicalKeyboardKey.keyP, shift: true): a.previousEpisode,
-    };
+  // media_kit_video defaults.
+  const SingleActivator(LogicalKeyboardKey.mediaPlay): a.play,
+  const SingleActivator(LogicalKeyboardKey.mediaPause): a.pause,
+  const SingleActivator(LogicalKeyboardKey.mediaPlayPause): a.playOrPause,
+  const SingleActivator(LogicalKeyboardKey.space): a.playOrPause,
+  const SingleActivator(LogicalKeyboardKey.keyJ): () => a.seekBy(const Duration(seconds: -10)),
+  const SingleActivator(LogicalKeyboardKey.keyI): () => a.seekBy(const Duration(seconds: 10)),
+  const SingleActivator(LogicalKeyboardKey.arrowLeft): () => a.seekBy(const Duration(seconds: -2)),
+  const SingleActivator(LogicalKeyboardKey.arrowRight): () => a.seekBy(const Duration(seconds: 2)),
+  const SingleActivator(LogicalKeyboardKey.arrowUp): () => a.changeVolume(5),
+  const SingleActivator(LogicalKeyboardKey.arrowDown): () => a.changeVolume(-5),
+  const SingleActivator(LogicalKeyboardKey.keyF): a.toggleFullscreen,
+  // Added.
+  const SingleActivator(LogicalKeyboardKey.escape): a.escape,
+  const SingleActivator(LogicalKeyboardKey.mediaTrackNext): a.nextEpisode,
+  const SingleActivator(LogicalKeyboardKey.keyN): a.nextEpisode,
+  const SingleActivator(LogicalKeyboardKey.keyN, shift: true): a.nextEpisode,
+  const SingleActivator(LogicalKeyboardKey.mediaTrackPrevious): a.previousEpisode,
+  const SingleActivator(LogicalKeyboardKey.keyP): a.previousEpisode,
+  const SingleActivator(LogicalKeyboardKey.keyP, shift: true): a.previousEpisode,
+};

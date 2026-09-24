@@ -24,8 +24,10 @@ void main() {
   setUpAll(sqfliteFfiInit);
 
   setUp(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(const MethodChannel('com.alexmercerind/flutter_acrylic'), (_) async => null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('com.alexmercerind/flutter_acrylic'),
+      (_) async => null,
+    );
   });
 
   /// The database runs on a real isolate, so let it answer outside fake time.
@@ -47,7 +49,12 @@ void main() {
     tester.view.physicalSize = const Size(1333, 768);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(theme: ThemeData(brightness: Brightness.dark, useMaterial3: true), home: home));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(brightness: Brightness.dark, useMaterial3: true),
+        home: home,
+      ),
+    );
     await settle(tester);
   }
 
@@ -127,12 +134,18 @@ void main() {
 
   testWidgets('add dialog lays out without overflow', (tester) async {
     await tester.runAsync(() async => repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath)));
-    await pumpApp(tester, Scaffold(body: AddItemDialog(repository: repo, malClient: MalClient())));
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: AddItemDialog(repository: repo, malClient: MalClient()),
+      ),
+    );
 
     expect(find.text('Add to Library'), findsOneWidget);
     // FilledButton.icon is a private subclass on older Flutter versions, so match by `is`, not by exact type.
-    final addButton = tester.widget<FilledButton>(find.ancestor(
-        of: find.text('Add Without Metadata'), matching: find.byWidgetPredicate((w) => w is FilledButton)));
+    final addButton = tester.widget<FilledButton>(
+      find.ancestor(of: find.text('Add Without Metadata'), matching: find.byWidgetPredicate((w) => w is FilledButton)),
+    );
     expect(addButton.onPressed, isNull, reason: 'nothing selected yet');
     expect(tester.takeException(), isNull);
   });
@@ -150,7 +163,12 @@ void main() {
     final mal = FakeMalClient({
       'frieren': const [MalSearchResult(id: 1, title: 'Sousou no Frieren')],
     });
-    await pumpApp(tester, Scaffold(body: BulkImportDialog(repository: repo, malClient: mal)));
+    await pumpApp(
+      tester,
+      Scaffold(
+        body: BulkImportDialog(repository: repo, malClient: mal),
+      ),
+    );
 
     await tester.enterText(find.byType(TextField), tmp.path);
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -179,10 +197,13 @@ void main() {
       for (final f in ['Show - 01.mkv', 'Show - 02.mkv']) {
         await File(p.join(tmp.path, f)).create();
       }
-      await repo.addItem(LibraryItem(type: MediaType.anime, title: 'Show', rootPath: tmp.path),
-          [ScannedEpisode(season: 1, number: 1, path: p.join(tmp.path, 'Show - 01.mkv'))]);
-      await repo.addItem(LibraryItem(type: MediaType.anime, title: 'Unplugged', rootPath: p.join(tmp.path, 'nope')),
-          const [ScannedEpisode(season: 1, number: 1, path: '/nope/1.mkv')]);
+      await repo.addItem(LibraryItem(type: MediaType.anime, title: 'Show', rootPath: tmp.path), [
+        ScannedEpisode(season: 1, number: 1, path: p.join(tmp.path, 'Show - 01.mkv')),
+      ]);
+      await repo.addItem(
+        LibraryItem(type: MediaType.anime, title: 'Unplugged', rootPath: p.join(tmp.path, 'nope')),
+        const [ScannedEpisode(season: 1, number: 1, path: '/nope/1.mkv')],
+      );
     });
     addTearDown(() => tmp.deleteSync(recursive: true));
     await pumpApp(tester, HomePage(repository: repo, malClient: MalClient()));
@@ -198,8 +219,9 @@ void main() {
     late int episodeId;
     await tester.runAsync(() async {
       repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath));
-      final item = await repo.addItem(LibraryItem(type: MediaType.anime, title: 'Show', rootPath: '/show'),
-          const [ScannedEpisode(season: 1, number: 1, path: '/show/1.mkv')]);
+      final item = await repo.addItem(LibraryItem(type: MediaType.anime, title: 'Show', rootPath: '/show'), const [
+        ScannedEpisode(season: 1, number: 1, path: '/show/1.mkv'),
+      ]);
       episodeId = (await repo.episodes(item.id!)).single.id!;
       await repo.setWatched(episodeId, true);
     });

@@ -28,18 +28,24 @@ class EpisodeList extends StatelessWidget {
     for (final e in episodes) {
       if (e.season != season) {
         season = e.season;
-        rows.add(Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Text(season == 0 ? 'Specials' : 'Season $season',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-        ));
+        rows.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text(
+              season == 0 ? 'Specials' : 'Season $season',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        );
       }
-      rows.add(_EpisodeTile(
-        episode: e,
-        highlighted: e.id == highlightId,
-        onTap: () => onPlay(e),
-        onSetWatched: (w) => onSetWatched(e, w),
-      ));
+      rows.add(
+        _EpisodeTile(
+          episode: e,
+          highlighted: e.id == highlightId,
+          onTap: () => onPlay(e),
+          onSetWatched: (w) => onSetWatched(e, w),
+        ),
+      );
     }
     // ListTiles paint highlights on the nearest Material; without this the
     // panel's decorated background would hide them.
@@ -56,8 +62,12 @@ class _EpisodeTile extends StatelessWidget {
   final VoidCallback onTap;
   final ValueChanged<bool> onSetWatched;
 
-  const _EpisodeTile(
-      {required this.episode, required this.highlighted, required this.onTap, required this.onSetWatched});
+  const _EpisodeTile({
+    required this.episode,
+    required this.highlighted,
+    required this.onTap,
+    required this.onSetWatched,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -81,18 +91,21 @@ class _EpisodeTile extends StatelessWidget {
       leading: leading,
       title: Text('Episode ${episode.number}'),
       subtitle: Text(episode.fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (progress != null && !episode.completed && progress.duration > Duration.zero)
-          Text('${formatDuration(progress.position)} / ${formatDuration(progress.duration)}'),
-        PopupMenuButton<bool>(
-          tooltip: 'Episode options',
-          onSelected: onSetWatched,
-          itemBuilder: (_) => [
-            if (!episode.completed) const PopupMenuItem(value: true, child: Text('Mark as watched')),
-            if (progress != null) const PopupMenuItem(value: false, child: Text('Mark as unwatched')),
-          ],
-        ),
-      ]),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (progress != null && !episode.completed && progress.duration > Duration.zero)
+            Text('${formatDuration(progress.position)} / ${formatDuration(progress.duration)}'),
+          PopupMenuButton<bool>(
+            tooltip: 'Episode options',
+            onSelected: onSetWatched,
+            itemBuilder: (_) => [
+              if (!episode.completed) const PopupMenuItem(value: true, child: Text('Mark as watched')),
+              if (progress != null) const PopupMenuItem(value: false, child: Text('Mark as unwatched')),
+            ],
+          ),
+        ],
+      ),
       onTap: onTap,
     );
   }

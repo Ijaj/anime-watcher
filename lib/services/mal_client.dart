@@ -12,12 +12,12 @@ class MalSearchResult {
   const MalSearchResult({required this.id, required this.title, this.mediaType, this.year, this.imageMedium});
 
   factory MalSearchResult.fromNode(Map<String, dynamic> node) => MalSearchResult(
-        id: node['id'] as int,
-        title: node['title'] as String,
-        mediaType: node['media_type'] as String?,
-        year: (node['start_season'] as Map<String, dynamic>?)?['year'] as int?,
-        imageMedium: (node['main_picture'] as Map<String, dynamic>?)?['medium'] as String?,
-      );
+    id: node['id'] as int,
+    title: node['title'] as String,
+    mediaType: node['media_type'] as String?,
+    year: (node['start_season'] as Map<String, dynamic>?)?['year'] as int?,
+    imageMedium: (node['main_picture'] as Map<String, dynamic>?)?['medium'] as String?,
+  );
 
   /// e.g. "Frieren (TV, 2023)".
   String get label {
@@ -53,13 +53,16 @@ class MalClient {
   final Dio _dio;
 
   MalClient({Dio? dio, String clientId = AppConfig.malClientId})
-      : _dio = dio ??
-            Dio(BaseOptions(
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
               baseUrl: AppConfig.malBaseUrl,
               headers: {'X-MAL-Client-ID': clientId},
               connectTimeout: const Duration(seconds: 10),
               receiveTimeout: const Duration(seconds: 15),
-            ));
+            ),
+          );
 
   String get clientId => _dio.options.headers['X-MAL-Client-ID'] as String;
 
@@ -71,11 +74,7 @@ class MalClient {
     // MAL rejects queries shorter than 3 characters and longer than 64.
     if (q.length < 3) throw const MalException('Title must be at least 3 characters to search.');
     if (q.length > 64) q = q.substring(0, 64);
-    final data = await _get('/anime', {
-      'q': q,
-      'limit': 10,
-      'fields': 'media_type,start_season,main_picture',
-    });
+    final data = await _get('/anime', {'q': q, 'limit': 10, 'fields': 'media_type,start_season,main_picture'});
     return [
       for (final e in (data['data'] as List<dynamic>? ?? const []))
         MalSearchResult.fromNode(e['node'] as Map<String, dynamic>),
