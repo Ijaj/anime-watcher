@@ -87,7 +87,8 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 
 - ✅ Bump `win32` / `archive` in `pubspec.lock` — the previously locked
   versions do not compile on Dart ≥ 3.5.
-- ⬜ Remove unused dependencies (`play_video`, `json_theme` if unused).
+- ✅ Remove unused dependencies (`play_video`, `json_theme`, `toastification`,
+  `fullscreen_window`, `filesystem_picker`).
 - ⬜ Clear remaining lints, add widget tests.
 - ⬜ CI (analyze + test) via GitHub Actions.
 - ⬜ Windows installer (MSIX) and Linux bundle; app icon.
