@@ -96,6 +96,26 @@ specific to this app). To install it as a normal application:
 Run `install.sh --no-deps` to skip the package-manager step if you'd
 rather manage those libraries yourself.
 
+### Windows
+
+Windows users don't need to build anything: grab `anime-watcher-setup_x64.exe`
+from the [Releases page](../../releases), run it, and it installs the app
+(Start Menu + optional desktop shortcut) and, if missing, the Microsoft
+Visual C++ runtime the Flutter engine needs. mpv and sqlite3 are already
+bundled into the build by their Flutter plugins, so nothing else to install.
+
+That installer is built by `.github/workflows/release.yml` on
+`windows-latest` (`flutter build windows --release`, then packaged with
+[Inno Setup](https://jrsoftware.org/isinfo.php) via
+`packaging/windows/installer.iss`) whenever a `v*.*.*` tag is pushed, and can
+also be run manually from the Actions tab. To build it yourself on Windows:
+
+```powershell
+flutter build windows --release
+curl.exe -L -o packaging\windows\vc_redist.x64.exe https://aka.ms/vs/17/release/vc_redist.x64.exe
+iscc packaging\windows\installer.iss
+```
+
 ## Tests
 
 ```sh

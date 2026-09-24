@@ -121,8 +121,16 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
   self-contained `bundle/`; `packaging/linux/install.sh` installs it
   per-user or system-wide, adds a launcher and app-menu entry, and installs
   the mpv/sqlite3/gtk3 runtime libraries via pacman/apt/dnf/zypper.
-- ⬜ Windows installer (MSIX); app icon for the Linux .desktop entry beyond
-  the placeholder `assets/logo.png`.
+- ✅ Windows installer: `.github/workflows/release.yml` builds
+  `flutter build windows --release` on `windows-latest` and packages it
+  with Inno Setup (`packaging/windows/installer.iss`) into
+  `anime-watcher-setup_x64.exe`, which installs the app and the VC++
+  runtime redistributable if it's missing, then attaches it to the GitHub
+  Release for tags matching `v*.*.*`. Not yet run for real (needs a tag
+  push or a manual Actions run on a Windows runner to confirm the .iss
+  script works end to end).
+- ⬜ App icon for the Linux `.desktop` entry beyond the placeholder
+  `assets/logo.png`.
 
 ---
 
