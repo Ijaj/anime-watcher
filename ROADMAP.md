@@ -90,7 +90,7 @@ Status legend: ✅ done · 🚧 in progress · ⬜ not started
 - ✅ Remove unused dependencies (`play_video`, `json_theme`, `toastification`,
   `fullscreen_window`, `filesystem_picker`).
 - ⬜ Clear remaining lints, add widget tests.
-- ⬜ CI (analyze + test) via GitHub Actions.
+- ✅ CI (format + analyze + test) via GitHub Actions on ubuntu-latest.
 - ⬜ Windows installer (MSIX) and Linux bundle; app icon.
 
 ---
