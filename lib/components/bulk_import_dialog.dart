@@ -47,10 +47,11 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
   bool get _busy => _progress != null;
 
   Future<void> _browse() async {
-    final dir = await FilePicker.platform.getDirectoryPath(
+    final dir = await FilePicker.getDirectoryPath(
       dialogTitle: 'Select the folder that contains your show folders',
-      lockParentWindow: true,
       initialDirectory: await widget.repository.setting(_lastDirKey),
+      windowsOptions: const WindowsOptions(lockParentWindow: true),
+      linuxOptions: const LinuxOptions(lockParentWindow: true),
     );
     if (dir == null) return;
     _pathController.text = dir;
@@ -172,7 +173,7 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: candidates.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (_, i) => _CandidateRow(
                         candidate: candidates[i],
                         enabled: !_busy,

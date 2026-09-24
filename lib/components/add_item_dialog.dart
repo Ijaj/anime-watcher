@@ -54,10 +54,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   Future<void> _browse() async {
     final lastDir = await widget.repository.setting(_lastDirKey);
-    final dir = await FilePicker.platform.getDirectoryPath(
+    final dir = await FilePicker.getDirectoryPath(
       dialogTitle: 'Select the show folder',
-      lockParentWindow: true,
       initialDirectory: lastDir,
+      windowsOptions: const WindowsOptions(lockParentWindow: true),
+      linuxOptions: const LinuxOptions(lockParentWindow: true),
     );
     if (dir == null) return;
     _pathController.text = dir;

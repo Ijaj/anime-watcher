@@ -5,12 +5,12 @@ import 'package:anime_watcher/data/library_repository.dart';
 import 'package:anime_watcher/pages/home.dart';
 import 'package:anime_watcher/services/cover_cache.dart';
 import 'package:anime_watcher/services/mal_client.dart';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_acrylic/flutter_acrylic.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:window_manager/window_manager.dart';
 
 void main() async {
   sqfliteFfiInit();
@@ -24,12 +24,14 @@ void main() async {
 
   runApp(MyApp(repository: repository, malClient: malClient, coverCache: await CoverCache.open()));
   if (Platform.isWindows) {
-    doWhenWindowReady(() {
-      appWindow
-        ..minSize = const Size(1333, 768)
-        ..size = const Size(1333, 768)
-        ..alignment = Alignment.center
-        ..show();
+    await windowManager.ensureInitialized();
+    const windowOptions = WindowOptions(
+      size: Size(1333, 768),
+      minimumSize: Size(1333, 768),
+      center: true,
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
     });
   }
 }
