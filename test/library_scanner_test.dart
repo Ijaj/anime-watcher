@@ -16,8 +16,9 @@ void main() {
     await f.create(recursive: true);
   }
 
-  List<String> codes(List<dynamic> eps) =>
-      [for (final e in eps) 'S${e.season}E${e.number} ${p.relative(e.path, from: tmp.path)}'];
+  List<String> codes(List<dynamic> eps) => [
+    for (final e in eps) 'S${e.season}E${e.number} ${p.relative(e.path, from: tmp.path)}',
+  ];
 
   test('season folders and SxxEyy files', () async {
     await touch('Season 1/Show S01E01.mkv');
@@ -48,8 +49,10 @@ void main() {
 
   test('unnumbered files are ordered naturally after numbered ones', () {
     final eps = LibraryScanner.assign('/r', ['/r/b.mkv', '/r/Show - 02.mkv', '/r/a.mkv', '/r/Show - 01.mkv']);
-    expect([for (final e in eps) '${e.number} ${p.basename(e.path)}'],
-        ['1 Show - 01.mkv', '2 Show - 02.mkv', '3 a.mkv', '4 b.mkv']);
+    expect(
+      [for (final e in eps) '${e.number} ${p.basename(e.path)}'],
+      ['1 Show - 01.mkv', '2 Show - 02.mkv', '3 a.mkv', '4 b.mkv'],
+    );
   });
 
   test('duplicate numbers do not collide', () {
@@ -63,10 +66,10 @@ void main() {
 
   group('rescan', () {
     LibraryEntry entry(String root, int episodeCount) => LibraryEntry(
-          item: LibraryItem(type: MediaType.anime, title: 'Show', rootPath: root),
-          episodeCount: episodeCount,
-          watchedCount: 0,
-        );
+      item: LibraryItem(type: MediaType.anime, title: 'Show', rootPath: root),
+      episodeCount: episodeCount,
+      watchedCount: 0,
+    );
 
     test('missing folder is skipped', () async {
       expect(await LibraryScanner.rescan(entry(p.join(tmp.path, 'unplugged'), 3)), isNull);

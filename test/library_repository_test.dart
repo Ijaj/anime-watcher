@@ -126,16 +126,18 @@ void main() {
     var notified = 0;
     repo.addListener(() => notified++);
 
-    final summary = await repo.syncAll((entry) async => switch (entry.item.rootPath) {
-          '/a' => const [
-              ScannedEpisode(season: 1, number: 1, path: '/a/1.mkv'),
-              ScannedEpisode(season: 1, number: 2, path: '/a/2.mkv'),
-              ScannedEpisode(season: 1, number: 3, path: '/a/3.mkv'),
-            ],
-          '/b' => const [],
-          '/broken' => throw const FileSystemException('denied'),
-          _ => null,
-        });
+    final summary = await repo.syncAll(
+      (entry) async => switch (entry.item.rootPath) {
+        '/a' => const [
+          ScannedEpisode(season: 1, number: 1, path: '/a/1.mkv'),
+          ScannedEpisode(season: 1, number: 2, path: '/a/2.mkv'),
+          ScannedEpisode(season: 1, number: 3, path: '/a/3.mkv'),
+        ],
+        '/b' => const [],
+        '/broken' => throw const FileSystemException('denied'),
+        _ => null,
+      },
+    );
     expect((summary.added, summary.removed, summary.changedShows, summary.unavailable), (2, 1, 2, 2));
     expect(summary.changed, isTrue);
     expect(notified, 1);
@@ -149,8 +151,10 @@ void main() {
   });
 
   test('RescanSummary.describe', () {
-    expect(const RescanSummary(added: 3, removed: 1, changedShows: 2, unavailable: 1).describe(),
-        'Library updated in 2 shows. New: 3 episodes, removed: 1 episode · 1 folder unavailable');
+    expect(
+      const RescanSummary(added: 3, removed: 1, changedShows: 2, unavailable: 1).describe(),
+      'Library updated in 2 shows. New: 3 episodes, removed: 1 episode · 1 folder unavailable',
+    );
     expect(const RescanSummary(added: 1, changedShows: 1).describe(), 'Library updated in 1 show. New: 1 episode');
   });
 
@@ -186,22 +190,26 @@ void main() {
     await repo.saveProgress(b[1].id!, position: const Duration(minutes: 3), duration: const Duration(minutes: 24));
 
     final shelf = await repo.continueWatching();
-    expect([for (final c in shelf) '${c.entry.item.rootPath} ${c.episode.code}'], ['/b S01E02', '/a S01E02'],
-        reason: 'fully watched and never-watched shows are left out');
+    expect(
+      [for (final c in shelf) '${c.entry.item.rootPath} ${c.episode.code}'],
+      ['/b S01E02', '/a S01E02'],
+      reason: 'fully watched and never-watched shows are left out',
+    );
     expect(shelf.first.episode.progress!.position, const Duration(minutes: 3));
   });
 
   group('filterAndSort', () {
     LibraryEntry entry(String title, {int added = 0, int? watched}) => LibraryEntry(
-          item: LibraryItem(
-              type: MediaType.anime,
-              title: title,
-              rootPath: '/$title',
-              addedAt: DateTime.fromMillisecondsSinceEpoch(added)),
-          episodeCount: 1,
-          watchedCount: 0,
-          lastWatchedAt: watched == null ? null : DateTime.fromMillisecondsSinceEpoch(watched),
-        );
+      item: LibraryItem(
+        type: MediaType.anime,
+        title: title,
+        rootPath: '/$title',
+        addedAt: DateTime.fromMillisecondsSinceEpoch(added),
+      ),
+      episodeCount: 1,
+      watchedCount: 0,
+      lastWatchedAt: watched == null ? null : DateTime.fromMillisecondsSinceEpoch(watched),
+    );
     final entries = [
       entry('Kaguya-sama: Love Is War', added: 3, watched: 10),
       entry('attack on titan', added: 1),
@@ -210,16 +218,25 @@ void main() {
     List<String> titles(List<LibraryEntry> es) => [for (final e in es) e.item.title];
 
     test('title sort is case-insensitive', () {
-      expect(
-          titles(LibraryRepository.filterAndSort(entries)), ['attack on titan', 'Frieren', 'Kaguya-sama: Love Is War']);
+      expect(titles(LibraryRepository.filterAndSort(entries)), [
+        'attack on titan',
+        'Frieren',
+        'Kaguya-sama: Love Is War',
+      ]);
     });
     test('recently watched first, never-watched last by title', () {
-      expect(titles(LibraryRepository.filterAndSort(entries, sort: LibrarySort.recentlyWatched)),
-          ['Frieren', 'Kaguya-sama: Love Is War', 'attack on titan']);
+      expect(titles(LibraryRepository.filterAndSort(entries, sort: LibrarySort.recentlyWatched)), [
+        'Frieren',
+        'Kaguya-sama: Love Is War',
+        'attack on titan',
+      ]);
     });
     test('recently added first', () {
-      expect(titles(LibraryRepository.filterAndSort(entries, sort: LibrarySort.recentlyAdded)),
-          ['Kaguya-sama: Love Is War', 'Frieren', 'attack on titan']);
+      expect(titles(LibraryRepository.filterAndSort(entries, sort: LibrarySort.recentlyAdded)), [
+        'Kaguya-sama: Love Is War',
+        'Frieren',
+        'attack on titan',
+      ]);
     });
     test('query matches every word, ignoring case and punctuation', () {
       expect(titles(LibraryRepository.filterAndSort(entries, query: 'KAGUYA sama war')), ['Kaguya-sama: Love Is War']);
@@ -232,20 +249,20 @@ void main() {
 
   group('nextUp', () {
     Episode ep(int n, {bool done = false, int? touched, int pos = 0}) => Episode(
-          id: n,
-          itemId: 1,
-          season: 1,
-          number: n,
-          path: '/e$n',
-          progress: touched == null
-              ? null
-              : WatchProgress(
-                  position: Duration(seconds: pos),
-                  duration: const Duration(minutes: 24),
-                  completed: done,
-                  updatedAt: DateTime.fromMillisecondsSinceEpoch(touched),
-                ),
-        );
+      id: n,
+      itemId: 1,
+      season: 1,
+      number: n,
+      path: '/e$n',
+      progress: touched == null
+          ? null
+          : WatchProgress(
+              position: Duration(seconds: pos),
+              duration: const Duration(minutes: 24),
+              completed: done,
+              updatedAt: DateTime.fromMillisecondsSinceEpoch(touched),
+            ),
+    );
 
     test('nothing watched → first episode', () {
       expect(LibraryRepository.nextUp([ep(1), ep(2)])!.number, 1);

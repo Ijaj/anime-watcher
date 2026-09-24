@@ -30,11 +30,11 @@ class RescanSummary {
   bool get changed => added + removed > 0;
 
   RescanSummary copyWith({int? added, int? removed, int? changedShows, int? unavailable}) => RescanSummary(
-        added: added ?? this.added,
-        removed: removed ?? this.removed,
-        changedShows: changedShows ?? this.changedShows,
-        unavailable: unavailable ?? this.unavailable,
-      );
+    added: added ?? this.added,
+    removed: removed ?? this.removed,
+    changedShows: changedShows ?? this.changedShows,
+    unavailable: unavailable ?? this.unavailable,
+  );
 
   /// e.g. "Library updated in 2 shows. New: 3 episodes, removed: 1 episode · 1 folder unavailable".
   String describe() {
@@ -87,8 +87,9 @@ class LibraryRepository extends ChangeNotifier {
           item: LibraryItem.fromMap(r),
           episodeCount: r['episode_count'] as int,
           watchedCount: r['watched_count'] as int,
-          lastWatchedAt:
-              r['last_watched'] == null ? null : DateTime.fromMillisecondsSinceEpoch(r['last_watched'] as int),
+          lastWatchedAt: r['last_watched'] == null
+              ? null
+              : DateTime.fromMillisecondsSinceEpoch(r['last_watched'] as int),
         ),
     ];
   }
@@ -96,8 +97,11 @@ class LibraryRepository extends ChangeNotifier {
   /// Entries whose title contains every word of [query] (case- and
   /// punctuation-insensitive), ordered by [sort]. Ties, and never-watched
   /// items when sorting by recently watched, fall back to title order.
-  static List<LibraryEntry> filterAndSort(List<LibraryEntry> entries,
-      {String query = '', LibrarySort sort = LibrarySort.title}) {
+  static List<LibraryEntry> filterAndSort(
+    List<LibraryEntry> entries, {
+    String query = '',
+    LibrarySort sort = LibrarySort.title,
+  }) {
     final words = _normalize(query).split(' ').where((w) => w.isNotEmpty).toList();
     final result = [
       for (final e in entries)
@@ -183,8 +187,9 @@ class LibraryRepository extends ChangeNotifier {
     if (started.isEmpty) return const [];
     final ids = [for (final e in started) e.item.id!];
     final rows = await _db.rawQuery(
-        '$_episodeSelect WHERE e.item_id IN (${List.filled(ids.length, '?').join(',')}) ORDER BY e.item_id, $_episodeOrder',
-        ids);
+      '$_episodeSelect WHERE e.item_id IN (${List.filled(ids.length, '?').join(',')}) ORDER BY e.item_id, $_episodeOrder',
+      ids,
+    );
     final byItem = <int, List<Episode>>{};
     for (final r in rows) {
       final episode = Episode.fromMap(r);
@@ -267,8 +272,12 @@ class LibraryRepository extends ChangeNotifier {
     });
   }
 
-  Map<String, Object?> _episodeRow(int itemId, ScannedEpisode e) =>
-      {'item_id': itemId, 'season': e.season, 'number': e.number, 'path': e.path};
+  Map<String, Object?> _episodeRow(int itemId, ScannedEpisode e) => {
+    'item_id': itemId,
+    'season': e.season,
+    'number': e.number,
+    'path': e.path,
+  };
 
   // ------------------------------------------------------------- progress
 
@@ -277,22 +286,29 @@ class LibraryRepository extends ChangeNotifier {
   Future<void> saveProgress(int episodeId, {required Duration position, required Duration duration}) async {
     final completed =
         duration > Duration.zero && position.inMilliseconds >= duration.inMilliseconds * _watchedThreshold;
-    final before =
-        await _db.query('watch_progress', columns: ['completed'], where: 'episode_id = ?', whereArgs: [episodeId]);
-    await _db.rawInsert('''
+    final before = await _db.query(
+      'watch_progress',
+      columns: ['completed'],
+      where: 'episode_id = ?',
+      whereArgs: [episodeId],
+    );
+    await _db.rawInsert(
+      '''
       INSERT INTO watch_progress (episode_id, position_ms, duration_ms, completed, updated_at)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(episode_id) DO UPDATE SET
         position_ms = excluded.position_ms,
         duration_ms = excluded.duration_ms,
         completed = MAX(completed, excluded.completed),
-        updated_at = excluded.updated_at''', [
-      episodeId,
-      position.inMilliseconds,
-      duration.inMilliseconds,
-      completed ? 1 : 0,
-      DateTime.now().millisecondsSinceEpoch,
-    ]);
+        updated_at = excluded.updated_at''',
+      [
+        episodeId,
+        position.inMilliseconds,
+        duration.inMilliseconds,
+        completed ? 1 : 0,
+        DateTime.now().millisecondsSinceEpoch,
+      ],
+    );
     final wasCompleted = before.isNotEmpty && before.first['completed'] == 1;
     // Only list-level state (watched counts) needs a refresh; skip the
     // periodic position saves to avoid rebuilding the UI every few seconds.
@@ -301,11 +317,13 @@ class LibraryRepository extends ChangeNotifier {
 
   Future<void> setWatched(int episodeId, bool watched) async {
     if (watched) {
-      await _db.rawInsert('''
+      await _db.rawInsert(
+        '''
         INSERT INTO watch_progress (episode_id, position_ms, duration_ms, completed, updated_at)
         VALUES (?, 0, 0, 1, ?)
         ON CONFLICT(episode_id) DO UPDATE SET completed = 1, updated_at = excluded.updated_at''',
-          [episodeId, DateTime.now().millisecondsSinceEpoch]);
+        [episodeId, DateTime.now().millisecondsSinceEpoch],
+      );
     } else {
       await _db.delete('watch_progress', where: 'episode_id = ?', whereArgs: [episodeId]);
     }

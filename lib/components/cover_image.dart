@@ -35,7 +35,7 @@ class CoverImage extends StatelessWidget {
             width: width,
             height: height,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => placeholder,
+            errorBuilder: (_, _, _) => placeholder,
             frameBuilder: (_, child, frame, sync) => sync || frame != null ? child : placeholder,
           );
     return ClipRRect(
@@ -48,7 +48,7 @@ class CoverImage extends StatelessWidget {
               height: height,
               fit: BoxFit.cover,
               // The cached file may have been deleted; the network copy is next best.
-              errorBuilder: (_, __, ___) => network,
+              errorBuilder: (_, _, _) => network,
             ),
     );
   }

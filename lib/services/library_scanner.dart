@@ -44,8 +44,10 @@ class LibraryScanner {
       final relative = p.split(p.relative(entity.path, from: rootPath));
       final folders = relative.sublist(0, relative.length - 1);
       if (folders.any((f) => _ignoredFolders.contains(f.toLowerCase()))) continue;
-      if (RegExp(r'(^|[\s._-])sample([\s._-]|$)', caseSensitive: false)
-          .hasMatch(p.basenameWithoutExtension(entity.path))) {
+      if (RegExp(
+        r'(^|[\s._-])sample([\s._-]|$)',
+        caseSensitive: false,
+      ).hasMatch(p.basenameWithoutExtension(entity.path))) {
         continue;
       }
       files.add(entity.path);

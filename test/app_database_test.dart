@@ -14,17 +14,19 @@ void main() {
     final path = p.join(tmp.path, 'v1.db');
 
     // The v1 items table, as shipped.
-    final v1 = await databaseFactoryFfi.openDatabase(path,
-        options: OpenDatabaseOptions(
-          version: 1,
-          onCreate: (db, _) => db.execute('''
+    final v1 = await databaseFactoryFfi.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: (db, _) => db.execute('''
             CREATE TABLE items (
               id INTEGER PRIMARY KEY AUTOINCREMENT, mal_id INTEGER, type TEXT NOT NULL, title TEXT NOT NULL,
               root_path TEXT NOT NULL UNIQUE, genres TEXT NOT NULL DEFAULT '[]', synopsis TEXT, image_medium TEXT,
               image_large TEXT, airing INTEGER NOT NULL DEFAULT 0, total_episodes INTEGER, score REAL,
               added_at INTEGER NOT NULL
             )'''),
-        ));
+      ),
+    );
     await v1.insert('items', {'type': 'anime', 'title': 'Old', 'root_path': '/old', 'added_at': 0});
     await v1.close();
 

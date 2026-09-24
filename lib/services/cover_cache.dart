@@ -25,10 +25,9 @@ class CoverCache {
       CoverCache(Directory(p.join((await getApplicationSupportDirectory()).path, 'covers')));
 
   static Future<List<int>> _download(String url) async {
-    final response = await Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 30),
-    )).get<List<int>>(url, options: Options(responseType: ResponseType.bytes));
+    final response = await Dio(
+      BaseOptions(connectTimeout: const Duration(seconds: 10), receiveTimeout: const Duration(seconds: 30)),
+    ).get<List<int>>(url, options: Options(responseType: ResponseType.bytes));
     return response.data ?? const [];
   }
 

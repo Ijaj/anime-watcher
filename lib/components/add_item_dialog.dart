@@ -54,10 +54,11 @@ class _AddItemDialogState extends State<AddItemDialog> {
 
   Future<void> _browse() async {
     final lastDir = await widget.repository.setting(_lastDirKey);
-    final dir = await FilePicker.platform.getDirectoryPath(
+    final dir = await FilePicker.getDirectoryPath(
       dialogTitle: 'Select the show folder',
-      lockParentWindow: true,
       initialDirectory: lastDir,
+      windowsOptions: const WindowsOptions(lockParentWindow: true),
+      linuxOptions: const LinuxOptions(lockParentWindow: true),
     );
     if (dir == null) return;
     _pathController.text = dir;
@@ -90,18 +91,18 @@ class _AddItemDialogState extends State<AddItemDialog> {
   }
 
   Future<void> _search() => _run(() async {
-        final results = await widget.malClient.search(_titleController.text);
-        setState(() {
-          _matches = results;
-          _selected = null;
-          _details = null;
-          _matchController.clear();
-        });
-        if (results.isEmpty) {
-          throw MalException('No MyAnimeList results for "${_titleController.text}".');
-        }
-        await _select(results.first);
-      });
+    final results = await widget.malClient.search(_titleController.text);
+    setState(() {
+      _matches = results;
+      _selected = null;
+      _details = null;
+      _matchController.clear();
+    });
+    if (results.isEmpty) {
+      throw MalException('No MyAnimeList results for "${_titleController.text}".');
+    }
+    await _select(results.first);
+  });
 
   Future<void> _select(MalSearchResult match) async {
     setState(() {
@@ -115,13 +116,13 @@ class _AddItemDialogState extends State<AddItemDialog> {
   }
 
   Future<void> _add() => _run(() async {
-        final root = _pathController.text.trim();
-        final item = _type == MediaType.anime && _details != null
-            ? LibraryItem.fromMal(_details!, rootPath: root, type: _type)
-            : LibraryItem(type: _type, title: _titleController.text.trim(), rootPath: root);
-        final saved = await widget.repository.addItem(item, _episodes ?? const []);
-        if (mounted) Navigator.of(context).pop(saved);
-      });
+    final root = _pathController.text.trim();
+    final item = _type == MediaType.anime && _details != null
+        ? LibraryItem.fromMal(_details!, rootPath: root, type: _type)
+        : LibraryItem(type: _type, title: _titleController.text.trim(), rootPath: root);
+    final saved = await widget.repository.addItem(item, _episodes ?? const []);
+    if (mounted) Navigator.of(context).pop(saved);
+  });
 
   /// Runs [action] with the busy spinner, turning exceptions into an inline
   /// error message.
@@ -166,61 +167,66 @@ class _AddItemDialogState extends State<AddItemDialog> {
             children: [
               Text('Add to Library', style: theme.textTheme.headlineSmall),
               const SizedBox(height: 16),
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: _pathController,
-                    onSubmitted: _loadFolder,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Show folder',
-                      hintText: 'Paste a path and press Enter, or Browse',
-                      isDense: true,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _pathController,
+                      onSubmitted: _loadFolder,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Show folder',
+                        hintText: 'Paste a path and press Enter, or Browse',
+                        isDense: true,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _busy ? null : _browse,
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('Browse…'),
-                ),
-              ]),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _browse,
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('Browse…'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
-              Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: _titleController,
-                    onSubmitted: (_) => _type == MediaType.anime ? _search() : setState(() {}),
-                    onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Title',
-                      isDense: true,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _titleController,
+                      onSubmitted: (_) => _type == MediaType.anime ? _search() : setState(() {}),
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Title',
+                        isDense: true,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                SegmentedButton<MediaType>(
-                  segments: const [
-                    ButtonSegment(value: MediaType.anime, label: Text('Anime'), icon: Icon(Icons.animation)),
-                    ButtonSegment(value: MediaType.movie, label: Text('Movie'), icon: Icon(Icons.movie)),
-                    ButtonSegment(value: MediaType.series, label: Text('TV Series'), icon: Icon(Icons.tv)),
-                  ],
-                  selected: {_type},
-                  onSelectionChanged: (v) => setState(() => _type = v.first),
-                ),
-                const SizedBox(width: 12),
-                Tooltip(
-                  message: _type == MediaType.anime ? '' : 'Metadata lookup for movies and TV series is coming soon',
-                  child: FilledButton.tonalIcon(
-                    onPressed:
-                        !_busy && _type == MediaType.anime && _titleController.text.trim().length >= 3 ? _search : null,
-                    icon: const Icon(Icons.search),
-                    label: const Text('Search MAL'),
+                  const SizedBox(width: 12),
+                  SegmentedButton<MediaType>(
+                    segments: const [
+                      ButtonSegment(value: MediaType.anime, label: Text('Anime'), icon: Icon(Icons.animation)),
+                      ButtonSegment(value: MediaType.movie, label: Text('Movie'), icon: Icon(Icons.movie)),
+                      ButtonSegment(value: MediaType.series, label: Text('TV Series'), icon: Icon(Icons.tv)),
+                    ],
+                    selected: {_type},
+                    onSelectionChanged: (v) => setState(() => _type = v.first),
                   ),
-                ),
-              ]),
+                  const SizedBox(width: 12),
+                  Tooltip(
+                    message: _type == MediaType.anime ? '' : 'Metadata lookup for movies and TV series is coming soon',
+                    child: FilledButton.tonalIcon(
+                      onPressed: !_busy && _type == MediaType.anime && _titleController.text.trim().length >= 3
+                          ? _search
+                          : null,
+                      icon: const Icon(Icons.search),
+                      label: const Text('Search MAL'),
+                    ),
+                  ),
+                ],
+              ),
               if (_type == MediaType.anime) ...[
                 const SizedBox(height: 16),
                 LayoutBuilder(
@@ -232,9 +238,7 @@ class _AddItemDialogState extends State<AddItemDialog> {
                     onSelected: (v) {
                       if (v != null) _select(v);
                     },
-                    dropdownMenuEntries: [
-                      for (final m in _matches) DropdownMenuEntry(value: m, label: m.label),
-                    ],
+                    dropdownMenuEntries: [for (final m in _matches) DropdownMenuEntry(value: m, label: m.label)],
                   ),
                 ),
               ],
@@ -250,8 +254,10 @@ class _AddItemDialogState extends State<AddItemDialog> {
                     _row('Episodes (MAL)', malEpisodes == null || malEpisodes == 0 ? null : '$malEpisodes'),
                     _row('Status', (_details?['status'] as String?)?.replaceAll('_', ' ')),
                   ],
-                  _row('Seasons on disk',
-                      seasonsOnDisk?.map((s) => s == 0 ? 'Specials' : '$s').join(', ') ?? _parsed?.seasons.join(', ')),
+                  _row(
+                    'Seasons on disk',
+                    seasonsOnDisk?.map((s) => s == 0 ? 'Specials' : '$s').join(', ') ?? _parsed?.seasons.join(', '),
+                  ),
                   _row('Video files found', _episodes?.length.toString()),
                 ],
               ),
@@ -261,22 +267,26 @@ class _AddItemDialogState extends State<AddItemDialog> {
                 child: _busy
                     ? const Align(alignment: Alignment.centerLeft, child: LinearProgressIndicator())
                     : _error != null
-                        ? Text(_error!, style: TextStyle(color: theme.colorScheme.error), maxLines: 2)
-                        : _episodes != null && _episodes!.isEmpty
-                            ? Text('No video files found in this folder.',
-                                style: TextStyle(color: theme.colorScheme.error))
-                            : null,
+                    ? Text(_error!, style: TextStyle(color: theme.colorScheme.error), maxLines: 2)
+                    : _episodes != null && _episodes!.isEmpty
+                    ? Text('No video files found in this folder.', style: TextStyle(color: theme.colorScheme.error))
+                    : null,
               ),
               const SizedBox(height: 12),
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  onPressed: _canAdd ? _add : null,
-                  icon: const Icon(Icons.library_add),
-                  label: Text(_type == MediaType.anime && _details == null ? 'Add Without Metadata' : 'Add To Library'),
-                ),
-              ]),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _canAdd ? _add : null,
+                    icon: const Icon(Icons.library_add),
+                    label: Text(
+                      _type == MediaType.anime && _details == null ? 'Add Without Metadata' : 'Add To Library',
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -284,9 +294,13 @@ class _AddItemDialogState extends State<AddItemDialog> {
     );
   }
 
-  TableRow _row(String label, Object? value) => TableRow(children: [
-        Padding(
-            padding: const EdgeInsets.all(8), child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
-        Padding(padding: const EdgeInsets.all(8), child: Text(value?.toString() ?? '—')),
-      ]);
+  TableRow _row(String label, Object? value) => TableRow(
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(8),
+        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ),
+      Padding(padding: const EdgeInsets.all(8), child: Text(value?.toString() ?? '—')),
+    ],
+  );
 }

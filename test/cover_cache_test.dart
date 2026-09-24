@@ -19,11 +19,14 @@ void main() {
     tmp = await Directory.systemTemp.createTemp('covers_test');
     repo = LibraryRepository(await AppDatabase.open(path: inMemoryDatabasePath));
     fetched = [];
-    cache = CoverCache(Directory(p.join(tmp.path, 'covers')), fetch: (url) async {
-      fetched.add(url);
-      if (url.contains('broken')) throw const SocketException('offline');
-      return [1, 2, 3];
-    });
+    cache = CoverCache(
+      Directory(p.join(tmp.path, 'covers')),
+      fetch: (url) async {
+        fetched.add(url);
+        if (url.contains('broken')) throw const SocketException('offline');
+        return [1, 2, 3];
+      },
+    );
   });
   tearDown(() async {
     await repo.close();
@@ -31,8 +34,9 @@ void main() {
   });
 
   Future<LibraryItem> add(String root, {String? large, String? medium}) => repo.addItem(
-      LibraryItem(type: MediaType.anime, title: root, rootPath: root, imageLarge: large, imageMedium: medium),
-      const []);
+    LibraryItem(type: MediaType.anime, title: root, rootPath: root, imageLarge: large, imageMedium: medium),
+    const [],
+  );
 
   Future<String?> storedPath(int id) async => (await repo.item(id))!.coverPath;
 
