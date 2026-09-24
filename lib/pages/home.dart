@@ -127,12 +127,15 @@ class _HomePageState extends State<HomePage> {
   /// show's episodes, or the continue-watching shelf when nothing is
   /// selected.
   Future<void> _reload() async {
+    final requestedId = _selectedId;
     final entries = await _repo.entries();
-    var selectedId = _selectedId;
+    var selectedId = requestedId;
     if (!entries.any((e) => e.item.id == selectedId)) selectedId = null;
     final episodes = selectedId == null ? <Episode>[] : await _repo.episodes(selectedId);
     final continueWatching = selectedId == null ? await _repo.continueWatching() : _continue;
-    if (!mounted) return;
+    // The selection changed while loading; the reload that change started
+    // will apply instead, so don't put the old selection back.
+    if (!mounted || _selectedId != requestedId) return;
     setState(() {
       _entries = entries;
       _selectedId = selectedId;
